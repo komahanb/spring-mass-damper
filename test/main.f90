@@ -88,7 +88,7 @@ program spring_mass_damper
   udot(1) = 0.0_dp
   uddot(1) = -(C*udot(1) + K*u(1))/M   ! rearrange the governing eqn
 
-  print*, dble(0)*dt, u(1), udot(1), uddot(1), du, R, &
+  print*, dble(0)*dt, 0, u(1), udot(1), uddot(1), du, R, &
        & exact_solution(dble(0)*dt,u(1),udot(1))
 
 !!$  ! extrapolate to the first time step
@@ -210,7 +210,7 @@ program spring_mass_damper
           &-----------------------------------------------------------&
           &--------------"
 
-     print*, dble(i-1)*dt, u(i), udot(i), udot(i), uddot(i), du, R, &
+     print*, dble(i-1)*dt, n, u(i), udot(i), udot(i), uddot(i), du, R, &
           & exact_solution(dble(i-1)*dt,u(1),udot(1))
 
   end do time
