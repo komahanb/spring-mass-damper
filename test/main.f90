@@ -23,11 +23,11 @@ program spring_mass_damper
   !-------------------------------------------------------------------!  
 
   integer, parameter :: max_bdf_order = 3       ! maximum BDF integ order
-  integer, parameter :: num_time_steps = 1000    ! number of time steps
+  integer, parameter :: num_time_steps = 10000    ! number of time steps
   integer, parameter :: max_newton_iters = 50   ! number of newton iters
 
-  integer, parameter :: max_fo_terms = max_bdf_order*(max_bdf_order+1)/2
-  integer, parameter :: max_so_terms = (2*max_bdf_order-1)*(2*max_bdf_order-1) + 1
+  integer, parameter :: max_fo_terms = max_bdf_order + 1
+  integer, parameter :: max_so_terms = 2*max_bdf_order + 1
 
   real(dp)  :: alpha(max_bdf_order, max_fo_terms) = 0.0_dp
   real(dp)  :: beta(max_bdf_order, max_so_terms) = 0.0_dp
@@ -54,6 +54,11 @@ program spring_mass_damper
   real(dp) :: udot(num_time_steps+1)  = 0.0_dp
   real(dp) :: uddot(num_time_steps+1) = 0.0_dp
 
+  ! exact solution and error
+  real(dp) :: exact(num_time_steps+1) = 0.0_dp
+  real(dp) :: error(num_time_steps+1) = 0.0_dp
+  real(dp) :: rmse = 0.0_dp
+
   real(dp) :: dR = 0.0_dp  ! jacobian
   real(dp) :: R = 0.0_dp   ! residual
   real(dp) :: du = 0.0_dp  ! state update
@@ -79,6 +84,7 @@ program spring_mass_damper
   ! set the BDF coefficient for second derivative
   beta(1, 1:3) = (/ 1.0_dp, -2.0_dp, 1.0_dp /)
   beta(2, 1:5) = (/ 2.25_dp, -6.0_dp, 5.5_dp, -2.0_dp, 0.25_dp /)
+! beta(3, 1:7) = (/  /)
 
   !-------------------------------------------------------------------!
   ! Set the initial condition (known)
@@ -88,9 +94,14 @@ program spring_mass_damper
   udot(1) = 0.0_dp
   uddot(1) = -(C*udot(1) + K*u(1))/M   ! rearrange the governing eqn
 
-  print*, dble(0)*dt, 0, u(1), udot(1), uddot(1), du, R, &
-       & exact_solution(dble(0)*dt,u(1),udot(1))
+  ! the exact solution at initial step
+  exact(1) = exact_solution(dble(0)*dt,u(1),udot(1))
+  error(1) = exact(1) - u(1)
 
+  ! open file and write the output at the initial step
+  open(unit = 88, file="solution.dat")
+  write(88,*) dble(0)*dt, 0, u(1), udot(1), uddot(1), du, R, exact(1), error(1)
+  
 !!$  ! extrapolate to the first time step
 !!$  u(2) = u(1) + udot(1)*dt + uddot(1)*dt2/2.0d0
 !!$  ! approximate udot using first order BDF
@@ -100,15 +111,13 @@ program spring_mass_damper
 
 !!$  print*, dble(1)*dt, u(2), udot(2), uddot(2), du, R, &
 !!$       &u(2) - exact_solution(dble(0)*dt,u(1),udot(1))
-  
+
   ! get the jacobian (system matrix)
   dR = K + C/dt + M/dt2
 
   time: do i = 2, num_time_steps + 1 
 
-     ! header
      if (newton_details) then
-
         write(*, '(2x, a)')  "-------------------------------------------&
              &------------&
              &-----------------------------------------------------------&
@@ -121,15 +130,16 @@ program spring_mass_damper
              &--------------"
      end if
 
-     ! extrapolate to the next time step (good starting point for Newton iters)
+     ! extrapolate to the next time step (good starting point)
      u(i) = u(i-1) + udot(i-1)*dt + uddot(i-1)*dt2/2.0_dp
 
      ! approximate udot using first order BDF
      ! udot(i) = (u(i) - u(i-1))/dt
+
      ! find uddot(3) algebraically
      ! uddot(i) = -(C*udot(i) + K*u(i))/M
 
-     newton: do n = 2, max_newton_iters
+     newton: do n = 1, max_newton_iters
 
         !-------------------------------------------------------------!
         ! FD approximation to I derivative
@@ -158,29 +168,19 @@ program spring_mass_damper
         !-------------------------------------------------------------!
         ! FD approximation to II derivative
         !-------------------------------------------------------------!
-
-!!$        if (i .ge. 50000) then
-!!$           ! second order approx to II derivative
-!!$           uddot(i) &
-!!$                &= beta(2, 1)*u(i)/dt2 &
-!!$                &+ beta(2, 2)*u(i-1)/dt2 &
-!!$                &+ beta(2, 3)*u(i-2)/dt2 &
-!!$                &+ beta(2, 4)*u(i-3)/dt2 &
-!!$                &+ beta(2, 5)*u(i-4)/dt2
-!!$        else
-
-        if (i .eq. 2) then
-           ! first order approx to II derivative (startup)
-           uddot(i) = (u(i) - u(i-1))/dt2 - udot(i-1)/dt
-
-        else
+        if (i .le. 3) then
            ! first order approx to II derivative
            uddot(i) &
-                &= beta(1, 1)*u(i)/dt2 &
-                &+ beta(1, 2)*u(i-1)/dt2 &
-                &+ beta(1, 3)*u(i-2)/dt2
+                &= alpha(1, 1)*udot(i)/dt &
+                &+ alpha(1, 2)*udot(i-1)/dt
+        else
+           ! second order approx to II derivative
+           uddot(i) &
+                &= alpha(1, 1)*udot(i)/dt &
+                &+ alpha(1, 2)*udot(i-1)/dt &
+                &+ alpha(1, 3)*udot(i-2)/dt
         end if
-
+        
         ! get the residual
         R = M*uddot(i) + C*udot(i) + K*u(i)
 
@@ -196,10 +196,10 @@ program spring_mass_damper
         unrm = sqrt(du*du)
 
         if ((rnrm .le. rnrm_tol) .or. (unrm .le. unrm_tol)) exit newton
-        
+
         if (n .eq. max_newton_iters) then
-           print*, "res=",r, "du=", du
-           stop"Newton failed to converge"
+           print*, "R=", r, "du=", du
+           print*, "Newton failed to converge"
         end if
 
      end do newton
@@ -209,11 +209,25 @@ program spring_mass_damper
           &------------&
           &-----------------------------------------------------------&
           &--------------"
+     
+     exact(i) = exact_solution(dble(i-1)*dt,u(1),udot(1))
+     error(i) = exact(i) - u(i)
 
-     print*, dble(i-1)*dt, n, u(i), udot(i), udot(i), uddot(i), du, R, &
-          & exact_solution(dble(i-1)*dt,u(1),udot(1))
-
+     write(88,*) dble(i-1)*dt, n, u(i), udot(i), uddot(i), du, R, exact(i), error(i)
+     
   end do time
+
+  close(88)
+
+  ! find the RMSE
+!!$  do i = 1, num_time_steps + 1 
+!!$     rmse = rmse + error(i)**2
+!!$  end do
+!!$  rmse = sqrt(rmse/dble(num_time_steps+1))
+
+  rmse = sqrt(sum(error**2)/dble(num_time_steps + 1))
+  
+  print*, "RMSE=", rmse     
 
 contains
 

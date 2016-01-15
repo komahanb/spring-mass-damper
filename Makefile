@@ -19,9 +19,9 @@ FC = mpif90
 #------------------------------
 # define any compile-time flags
 #------------------------------
-CC_FLAGS =  -g -Wall
-CX_FLAGS =  -g -Wall
-FC_FLAGS =  -g -cpp -dM -Wno-unused -fbounds-check -Wall
+CC_FLAGS =  -Wall
+CX_FLAGS =  -Wall
+FC_FLAGS =  -cpp -dM -Wno-unused -fbounds-check -Wall -O5
 
 #------------------------------
 # define the suffixes in use
