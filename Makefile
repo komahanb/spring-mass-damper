@@ -53,9 +53,7 @@ LIBS =  -ldl -lm -lstdc++ -llapack -lblas # -lpetsc
 #--------------------------
 # define the C, C++, Fortran source files
 #--------------------------
-SRC := $(wildcard test/*.f90 src/*.c src/*.cpp)
-
-#SRC := test/main.f90
+SRC := $(wildcard src/*.f90 src/*.c src/*.cpp)
 
 #-----------------------------------------------------------------------
 # define the C, C++, Fortran object files 
@@ -72,7 +70,7 @@ OBJ = $(patsubst src/%.f90,obj/%.o,$(SRC))
 # define the executable file 
 #------------------------------
 
-TARGET = $(BIN_DIR)/test
+TARGET = $(BIN_DIR)/test_newton_solver_class
 #
 # The following part of the makefile is generic; it can be used to 
 # build any executable just by changing the definitions above and by
