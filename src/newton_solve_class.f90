@@ -367,13 +367,19 @@ contains
   !-------------------------------------------------------------------!
 
   subroutine solve(this)
+
     class(newton_solve) :: this
+
     print *, "Executing Newton solve"
+
   end subroutine solve
 
 end module newton_solve_class
 
+!=====================================================================!
 ! Program to test newton_solve_class module
+!=====================================================================!
+
 program test_newton_solve_class
 
   use newton_solve_class
@@ -381,8 +387,8 @@ program test_newton_solve_class
 
   type(newton_solve) :: newton
 
-  ! call newton%init()
-  ! call newton%solve()
-
+  call newton % init()
+  call newton % solve()
+  
 end program test_newton_solve_class
 
