@@ -30,6 +30,8 @@ module newton_solve_bean_class
 
   type newton_solve_bean
 
+     private
+
      !----------------------------------------------------------------!
      ! Basic setup variables
      !----------------------------------------------------------------!
@@ -342,35 +344,77 @@ module newton_solve_class
   ! Expose datatypes
   public :: newton_solve
 
-  ! A type that encapsulates the data that is used by the Newton's
-  ! method
-  type newton_solve
-     type(newton_solve_bean) :: bean
+  ! A type that contains the logic for Newton's method
+  type, extends(newton_solve_bean) :: newton_solve
+     
    contains
-     procedure :: init  => init
-     procedure :: solve => solve
+
+     ! private procedures
+
+     procedure, private :: init  => init
+     procedure, private :: finish => finish
+     procedure, private :: work => work
+
+     ! public procedures
+
+     procedure, public :: solve => solve
+
   end type newton_solve
 
 contains
 
   !-------------------------------------------------------------------!
-  !                                                                   
+  ! Routine for initialization tasks
   !-------------------------------------------------------------------!
 
   subroutine init(this)
+
     class(newton_solve) :: this
+
     print *, "Initializing Newton Solve"
+
   end subroutine init
 
   !-------------------------------------------------------------------!
-  !                                                                   
+  ! Routine that wraps the logic of newton solve                                                          
+  !-------------------------------------------------------------------!
+
+  subroutine work(this)
+
+    class(newton_solve) :: this
+
+    print *, "Executing Newton solve"
+
+  end subroutine work
+
+  !-------------------------------------------------------------------!
+  ! Routine that performs finishing tasks
+  !-------------------------------------------------------------------!
+
+  subroutine finish(this)
+
+    class(newton_solve) :: this
+
+    print *, "Finish Newton solve"
+
+  end subroutine finish
+
+  !-------------------------------------------------------------------!
+  ! Routine that performs newton solve                                                                   
   !-------------------------------------------------------------------!
 
   subroutine solve(this)
 
     class(newton_solve) :: this
 
-    print *, "Executing Newton solve"
+    ! perform initialization tasks
+    call this % init()
+
+    ! perform newton solve
+    call this % work()
+
+    ! perform finalization tasks
+    call this % finish()
 
   end subroutine solve
 
@@ -387,8 +431,15 @@ program test_newton_solve_class
 
   type(newton_solve) :: newton
 
-  call newton % init()
-  call newton % solve()
+  ! call newton % init()
+
+  ! Set optional parameters
+  call newton % set_num_vars(1)
+  call newton % set_exit_on_failure(.true.)
   
+  ! solve the problem
+  call newton % solve()
+
+
 end program test_newton_solve_class
 
