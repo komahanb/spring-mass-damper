@@ -1,3 +1,7 @@
+!=====================================================================!
+! Module that manages the precision of real variables
+!=====================================================================!
+
 module precision
 
   !-------------------------------------------------------------------!
@@ -6,7 +10,7 @@ module precision
 
   integer, parameter :: sp = kind(0.0)    ! single precision
   integer, parameter :: dp = kind(0.0d0)  ! double precision
-  
+
 end module precision
 
 !=====================================================================!
@@ -68,28 +72,28 @@ module newton_solve_bean_class
      logical :: write_newton_details = .true.
      logical :: exit_on_failure      = .false. 
 
-     contains
+   contains
 
-       ! getters and setters for the above data
-       procedure :: get_max_newton_iters, set_max_newton_iters
-!!$       procedure :: get_num_vars, set_num_vars
-!!$
-!!$       procedure :: get_atol_unrm, set_atol_unrm
-!!$       procedure :: get_atol_rnrm, set_atol_rnrm
-!!$
-!!$       procedure :: get_rtol_unrm, set_rtol_unrm
-!!$       procedure :: get_rtol_rnrm, set_rtol_rnrm
-!!$
-!!$       procedure :: set_file_number
-!!$       procedure :: set_write_newton_details
-!!$       procedure :: set_exit_on_failure
-!!$
-       procedure :: set_init_x, set_init_xdot
-       
+     ! getters and setters for the above data
+     procedure :: get_max_newton_iters, set_max_newton_iters
+     procedure :: get_num_vars, set_num_vars
+
+     procedure :: get_atol_unrm, set_atol_unrm
+     procedure :: get_atol_rnrm, set_atol_rnrm
+
+     procedure :: get_rtol_unrm, set_rtol_unrm
+     procedure :: get_rtol_rnrm, set_rtol_rnrm
+
+     procedure :: set_file_number
+     procedure :: set_write_newton_details
+     procedure :: set_exit_on_failure
+
+     procedure :: set_init_x, set_init_xdot
+
   end type newton_solve_bean
 
 contains
-  
+
   ! max_newton_iters
   integer function get_max_newton_iters(this)
 
@@ -108,53 +112,53 @@ contains
 
   end subroutine set_max_newton_iters
 
-!!$  ! number of variables
-!!$  integer function get_num_vars(this)
-!!$
-!!$    class(newton_solve_bean) :: this
-!!$
-!!$    get_num_vars = this % num_vars
-!!$
-!!$  end function get_max_newton_iters
-!!$
-!!$  subroutine set_num_vars(this, num_vars)
-!!$    
-!!$    class(newton_solve_bean) :: this
-!!$    integer :: num_vars
-!!$    
-!!$    this % num_vars = num_vars
-!!$
-!!$  end subroutine set_num_vars
-!!$
-!!$  ! absolute tolerance of update norm
-!!$
-!!$  real(dp) function get_atol_unrm(this)
-!!$
-!!$    class(newton_solve_bean) :: this
-!!$    
-!!$    get_atol_unrm  = this % get_atol_unrm
-!!$
-!!$  end function get_atol_unrm
-!!$
-!!$  subroutine set_atol_unrm(this, atol_unrm)
-!!$
-!!$    class(newton_solve_bean) :: this
-!!$    real(dp) :: atol_unrm
-!!$
-!!$    this % atol_unrm = atol_unrm
-!!$
-!!$  end subroutine set_atol_unrm
-!!$
-!!$  ! absolute tolerance of residual norm
-!!$
-!!$  real(dp) function get_atol_rnrm(this)
-!!$
-!!$    class(newton_solve_bean) :: this
-!!$    
-!!$    get_atol_rnrm  = this % get_atol_rnrm
-!!$
-!!$  end function get_atol_rnrm
-!!$  
+  ! number of variables
+  integer function get_num_vars(this)
+
+    class(newton_solve_bean) :: this
+
+    get_num_vars = this % nvars
+
+  end function get_num_vars
+
+  subroutine set_num_vars(this, nvars)
+
+    class(newton_solve_bean) :: this
+    integer :: nvars
+
+    this % nvars = nvars
+
+  end subroutine set_num_vars
+
+  ! absolute tolerance of update norm
+
+  real(dp) function get_atol_unrm(this)
+
+    class(newton_solve_bean) :: this
+
+    get_atol_unrm  = this % atol_unrm
+
+  end function get_atol_unrm
+
+  subroutine set_atol_unrm(this, atol_unrm)
+
+    class(newton_solve_bean) :: this
+    real(dp) :: atol_unrm
+
+    this % atol_unrm = atol_unrm
+
+  end subroutine set_atol_unrm
+  
+  ! absolute tolerance of residual norm
+  
+  real(dp) function get_atol_rnrm(this)
+
+    class(newton_solve_bean) :: this
+
+    get_atol_rnrm  = this % atol_rnrm
+
+  end function get_atol_rnrm
+
   subroutine set_atol_rnrm(this, atol_rnrm)
 
     class(newton_solve_bean) :: this
@@ -164,16 +168,15 @@ contains
 
   end subroutine set_atol_rnrm
 
-!!$
-!!$ ! relative tolerance of update norm
-!!$
-!!$  real(dp) function get_rtol_unrm(this)
-!!$
-!!$    class(newton_solve_bean) :: this
-!!$    
-!!$    get_rtol_unrm  = this % get_rtol_unrm
-!!$
-!!$  end function get_rtol_unrm
+  ! relative tolerance of update norm
+
+  real(dp) function get_rtol_unrm(this)
+
+    class(newton_solve_bean) :: this
+
+    get_rtol_unrm  = this % rtol_unrm
+
+  end function get_rtol_unrm
 
   subroutine set_rtol_unrm(this, rtol_unrm)
 
@@ -184,19 +187,38 @@ contains
 
   end subroutine set_rtol_unrm
 
+  ! relative tolerance of residual norm
+
+  real(dp) function get_rtol_rnrm(this)
+
+    class(newton_solve_bean) :: this
+
+    get_rtol_rnrm  = this % rtol_rnrm
+
+  end function get_rtol_rnrm
+
+  subroutine set_rtol_rnrm(this, rtol_rnrm)
+
+    class(newton_solve_bean) :: this
+    real(dp) :: rtol_rnrm
+
+    this % rtol_rnrm = rtol_rnrm
+
+  end subroutine set_rtol_rnrm
+
   ! set the output file number
-  
- subroutine set_file_number(this, filenum)
+
+  subroutine set_file_number(this, filenum)
 
     class(newton_solve_bean) :: this
     integer :: filenum
-    
+
     this % filenum = filenum
 
   end subroutine set_file_number
-  
+
   ! set the print control for writing the details of newton solve
-  
+
   subroutine set_write_newton_details(this, write_newton_details)
 
     class(newton_solve_bean) :: this
@@ -205,7 +227,7 @@ contains
     this % write_newton_details = write_newton_details
 
   end subroutine set_write_newton_details
-  
+
   ! set whether or not to exit when not converged
 
   subroutine set_exit_on_failure(this, exit_on_failure)
@@ -223,13 +245,13 @@ contains
 
     class(newton_solve_bean) :: this
     real(dp) :: init_q
-    
+
     this % init_q = init_q
-    
+
   end subroutine set_init_x
 
   ! set the initial value of x (starting point)
-  
+
   subroutine set_init_xdot(this, init_qdot)
 
     class(newton_solve_bean) :: this
@@ -330,3 +352,4 @@ program test_newton_solve_class
   !  call newton%solve()
 
 end program test_newton_solve_class
+
