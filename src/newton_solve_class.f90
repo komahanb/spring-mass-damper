@@ -74,7 +74,6 @@ module newton_solve_bean_class
 
    contains
 
-     ! getters and setters for the above data
      procedure :: get_max_newton_iters, set_max_newton_iters
      procedure :: get_num_vars, set_num_vars
 
@@ -94,7 +93,10 @@ module newton_solve_bean_class
 
 contains
 
-  ! max_newton_iters
+  !-------------------------------------------------------------------!
+  ! Get max_newton_iters
+  !-------------------------------------------------------------------!
+
   integer function get_max_newton_iters(this)
 
     class(newton_solve_bean) :: this
@@ -102,6 +104,10 @@ contains
     get_max_newton_iters = this % max_newton_iters
 
   end function get_max_newton_iters
+
+  !-------------------------------------------------------------------!
+  ! Set max_newton_iters
+  !-------------------------------------------------------------------!
 
   subroutine set_max_newton_iters(this, max_newton_iters)
 
@@ -112,7 +118,10 @@ contains
 
   end subroutine set_max_newton_iters
 
-  ! number of variables
+  !-------------------------------------------------------------------!
+  ! Get number of variables
+  !-------------------------------------------------------------------!
+
   integer function get_num_vars(this)
 
     class(newton_solve_bean) :: this
@@ -120,6 +129,10 @@ contains
     get_num_vars = this % nvars
 
   end function get_num_vars
+
+  !-------------------------------------------------------------------!
+  ! Set number of variables
+  !-------------------------------------------------------------------!
 
   subroutine set_num_vars(this, nvars)
 
@@ -130,7 +143,9 @@ contains
 
   end subroutine set_num_vars
 
-  ! absolute tolerance of update norm
+  !-------------------------------------------------------------------!
+  ! Get absolute tolerance of update norm
+  !-------------------------------------------------------------------!
 
   real(dp) function get_atol_unrm(this)
 
@@ -140,6 +155,10 @@ contains
 
   end function get_atol_unrm
 
+  !-------------------------------------------------------------------!
+  ! Set absolute tolerance of update norm
+  !-------------------------------------------------------------------!
+
   subroutine set_atol_unrm(this, atol_unrm)
 
     class(newton_solve_bean) :: this
@@ -148,9 +167,11 @@ contains
     this % atol_unrm = atol_unrm
 
   end subroutine set_atol_unrm
-  
-  ! absolute tolerance of residual norm
-  
+
+  !-------------------------------------------------------------------!
+  ! Get absolute tolerance of residual norm
+  !-------------------------------------------------------------------!
+
   real(dp) function get_atol_rnrm(this)
 
     class(newton_solve_bean) :: this
@@ -158,6 +179,10 @@ contains
     get_atol_rnrm  = this % atol_rnrm
 
   end function get_atol_rnrm
+
+  !-------------------------------------------------------------------!
+  ! Set absolute tolerance of residual norm
+  !-------------------------------------------------------------------!
 
   subroutine set_atol_rnrm(this, atol_rnrm)
 
@@ -168,7 +193,9 @@ contains
 
   end subroutine set_atol_rnrm
 
-  ! relative tolerance of update norm
+  !-------------------------------------------------------------------!
+  ! Get relative tolerance of update norm
+  !-------------------------------------------------------------------!
 
   real(dp) function get_rtol_unrm(this)
 
@@ -177,6 +204,10 @@ contains
     get_rtol_unrm  = this % rtol_unrm
 
   end function get_rtol_unrm
+
+  !-------------------------------------------------------------------!
+  ! Set relative tolerance of update norm
+  !-------------------------------------------------------------------!
 
   subroutine set_rtol_unrm(this, rtol_unrm)
 
@@ -187,7 +218,9 @@ contains
 
   end subroutine set_rtol_unrm
 
-  ! relative tolerance of residual norm
+  !-------------------------------------------------------------------!
+  ! Get relative tolerance of residual norm
+  !-------------------------------------------------------------------!
 
   real(dp) function get_rtol_rnrm(this)
 
@@ -196,6 +229,10 @@ contains
     get_rtol_rnrm  = this % rtol_rnrm
 
   end function get_rtol_rnrm
+
+  !-------------------------------------------------------------------!
+  ! Set relative tolerance of residual norm
+  !-------------------------------------------------------------------!
 
   subroutine set_rtol_rnrm(this, rtol_rnrm)
 
@@ -206,7 +243,9 @@ contains
 
   end subroutine set_rtol_rnrm
 
-  ! set the output file number
+  !-------------------------------------------------------------------!
+  ! Set the output file number
+  !-------------------------------------------------------------------!
 
   subroutine set_file_number(this, filenum)
 
@@ -217,7 +256,9 @@ contains
 
   end subroutine set_file_number
 
-  ! set the print control for writing the details of newton solve
+  !-------------------------------------------------------------------!
+  ! Set the print control for writing the details of newton solve
+  !-------------------------------------------------------------------!
 
   subroutine set_write_newton_details(this, write_newton_details)
 
@@ -228,7 +269,9 @@ contains
 
   end subroutine set_write_newton_details
 
-  ! set whether or not to exit when not converged
+  !-------------------------------------------------------------------!
+  ! Set whether or not to exit when not converged
+  !-------------------------------------------------------------------!
 
   subroutine set_exit_on_failure(this, exit_on_failure)
 
@@ -239,7 +282,9 @@ contains
 
   end subroutine set_exit_on_failure
 
-  ! set the initial value of x (starting point)
+  !-------------------------------------------------------------------!
+  ! Set the initial value of x (starting point)
+  !-------------------------------------------------------------------!
 
   subroutine set_init_x(this, init_q)
 
@@ -250,7 +295,9 @@ contains
 
   end subroutine set_init_x
 
-  ! set the initial value of x (starting point)
+  !-------------------------------------------------------------------!
+  ! Set the initial value of x (starting point)
+  !-------------------------------------------------------------------!
 
   subroutine set_init_xdot(this, init_qdot)
 
@@ -300,25 +347,9 @@ module newton_solve_class
   type newton_solve
      type(newton_solve_bean) :: bean
    contains
-     procedure :: init  => newton_init_
-     procedure :: solve => newton_solve_
+     procedure :: init  => init
+     procedure :: solve => solve
   end type newton_solve
-
-!!$  ! Interface for the initialization of Newton root finding
-!!$  interface init
-!!$     subroutine newton_init_(this)
-!!$       import newton_solve
-!!$       type(newton_solve):: this
-!!$     end subroutine newton_init_
-!!$  end interface init
-!!$
-!!$  ! Interface for the initialization of Newton root finding
-!!$  interface solve
-!!$     subroutine newton_solve_(this)
-!!$       import newton_solve
-!!$       type(newton_solve) :: this
-!!$     end subroutine newton_solve_
-!!$  end interface solve
 
 contains
 
@@ -326,17 +357,19 @@ contains
   !                                                                   
   !-------------------------------------------------------------------!
 
-  subroutine newton_init_(this)
+  subroutine init(this)
     class(newton_solve) :: this
-  end subroutine newton_init_
+    print *, "Initializing Newton Solve"
+  end subroutine init
 
   !-------------------------------------------------------------------!
   !                                                                   
   !-------------------------------------------------------------------!
 
-  subroutine newton_solve_(this)
+  subroutine solve(this)
     class(newton_solve) :: this
-  end subroutine newton_solve_
+    print *, "Executing Newton solve"
+  end subroutine solve
 
 end module newton_solve_class
 
@@ -348,8 +381,8 @@ program test_newton_solve_class
 
   type(newton_solve) :: newton
 
-  !  call newton%init()
-  !  call newton%solve()
+  ! call newton%init()
+  ! call newton%solve()
 
 end program test_newton_solve_class
 
