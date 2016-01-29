@@ -11,10 +11,54 @@ module newton_solve_bean_class
   private
   public :: newton_solve_bean
 
-  type newton_solve_bean     
-     logical :: store_data
-     logical :: write_data
-     real(8) :: atol, rtol
+  !-------------------------------------------------------------------!
+  !  Define constants to manage precision [TUNABLE]
+  !-------------------------------------------------------------------!
+
+  integer, parameter :: sp = kind(0.0)    ! single precision
+  integer, parameter :: dp = kind(0.0d0)  ! double precision
+
+  type newton_solve_bean
+
+     !----------------------------------------------------------------!
+     ! Basic setup variables
+     !----------------------------------------------------------------!
+
+     integer :: max_newton_iters = 50
+     integer :: nvars = 1
+
+     !----------------------------------------------------------------!
+     ! Solution variables
+     !----------------------------------------------------------------!
+
+     real(dp) :: q
+     real(dp) :: qdot
+     real(dp) :: qddot
+
+     !----------------------------------------------------------------!
+     ! Stopping criteria
+     !----------------------------------------------------------------!
+
+     ! absolute tolerances
+     real(dp) :: atol_rnrm = 1.0d-12
+     real(dp) :: atol_unrm = 1.0d-12
+
+     ! relative tolerances
+     real(dp) :: rtol_rnrm = 1.0d-6
+     real(dp) :: rtol_unrm = 1.0d-6
+
+     ! actual norm values
+     real(dp) :: rnrm      = 0.0_dp
+     real(dp) :: unrm      = 0.0_dp 
+
+     !----------------------------------------------------------------!
+     ! Print and solution write control
+     !----------------------------------------------------------------!
+
+     integer :: filenum              = 6 
+     logical :: write_newton_details = .true.
+     logical :: exit_on_failure      = .false. 
+
   end type newton_solve_bean
 
 end module newton_solve_bean_class
@@ -29,19 +73,19 @@ end module newton_solve_bean_class
 !
 ! Usage : In a main program,
 !
-! type(newton_solve) :: solve ! create an instance of the solve
+! type(newton_solve) :: newton ! create an instance of the solve
 !
-! call solve%init()
-! call solve%solve()
+! call newton%init()
+! call newton%solve()
 !
 ! Author :  Komahan Boopathy (komahan@gatech.edu)
 ! =====================================================================!
 
 module newton_solve_class
-  
+
   ! import dependencies
   use newton_solve_bean_class
-  
+
   ! No implicit varaible definitions
   implicit none
 
@@ -59,19 +103,25 @@ module newton_solve_class
   type newton_solve
      type(newton_solve_bean) :: bean
    contains
-     ! all type bound procedures go here
-
+     procedure :: init  => newton_init_
+     procedure :: solve => newton_solve_
   end type newton_solve
 
-  ! Interface for the initialization of Newton root finding
-  interface init
-     module procedure newton_init_
-  end interface init
-
-  ! Interface for the initialization of Newton root finding
-  interface solve
-     module procedure newton_solve_
-  end interface solve
+!!$  ! Interface for the initialization of Newton root finding
+!!$  interface init
+!!$     subroutine newton_init_(this)
+!!$       import newton_solve
+!!$       type(newton_solve):: this
+!!$     end subroutine newton_init_
+!!$  end interface init
+!!$
+!!$  ! Interface for the initialization of Newton root finding
+!!$  interface solve
+!!$     subroutine newton_solve_(this)
+!!$       import newton_solve
+!!$       type(newton_solve) :: this
+!!$     end subroutine newton_solve_
+!!$  end interface solve
 
 contains
 
@@ -79,23 +129,29 @@ contains
   !                                                                   
   !-------------------------------------------------------------------!
 
-  subroutine newton_init_
-
+  subroutine newton_init_(this)
+    type(newton_solve) :: this
   end subroutine newton_init_
 
   !-------------------------------------------------------------------!
   !                                                                   
   !-------------------------------------------------------------------!
 
-  subroutine newton_solve_
-
+  subroutine newton_solve_(this)
+    type(newton_solve) :: this
   end subroutine newton_solve_
 
 end module newton_solve_class
 
 ! Program to test newton_solve_class module
 program test_newton_solve_class
+
   use newton_solve_class
   implicit none  
+
   type(newton_solve) :: newton
+
+  !  call newton%init()
+  !  call newton%solve()
+
 end program test_newton_solve_class
