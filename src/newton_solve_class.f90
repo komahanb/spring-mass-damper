@@ -333,6 +333,7 @@ end module newton_solve_bean_class
 module newton_solve_class
 
   ! import dependencies
+  use precision
   use newton_solve_bean_class
 
   ! No implicit varaible definitions
@@ -346,77 +347,118 @@ module newton_solve_class
 
   ! A type that contains the logic for Newton's method
   type, extends(newton_solve_bean) :: newton_solve
-     
-   contains
 
-     ! private procedures
+contains
 
-     procedure, private :: init  => init
-     procedure, private :: finish => finish
-     procedure, private :: work => work
+  ! private procedures
+  procedure, private :: init  => init
+  procedure, private :: finish => finish
+  procedure, private :: work => work
 
-     ! public procedures
+  ! public procedures
+  procedure, public :: solve => solve
 
-     procedure, public :: solve => solve
+end type newton_solve
 
-  end type newton_solve
+!!$! user interface for implementing the residual
+!!$interface 
+!!$   function get_residual(q, qdot, qddot) result(func_val)
+!!$     use precision
+!!$     implicit none
+!!$     real(dp), optional :: q
+!!$     real(dp), optional :: qdot
+!!$     real(dp), optional :: qddot
+!!$     real(dp) :: func_val
+!!$   end function get_residual
+!!$end interface
 
 contains
 
   !-------------------------------------------------------------------!
-  ! Routine for initialization tasks
+  ! Return the residual of the function
   !-------------------------------------------------------------------!
 
-  subroutine init(this)
+function get_residual(q, qdot, qddot) result(func_val)
 
-    class(newton_solve) :: this
+ use precision
+ 
+ real(dp), optional :: q
+ real(dp), optional :: qdot
+ real(dp), optional :: qddot
 
-    print *, "Initializing Newton Solve"
+ real(dp) :: func_val
 
-  end subroutine init
+ real(dp) :: M = 1.0_dp
+ real(dp) :: C = 0.02_dp
+ real(dp) :: K = 5.0_dp
 
-  !-------------------------------------------------------------------!
-  ! Routine that wraps the logic of newton solve                                                          
-  !-------------------------------------------------------------------!
+ func_val = M*qddot + C*qdot + K*q
 
-  subroutine work(this)
+end function get_residual
 
-    class(newton_solve) :: this
+!-------------------------------------------------------------------!
+! Routine for initialization tasks
+!-------------------------------------------------------------------!
 
-    print *, "Executing Newton solve"
+subroutine init(this)
 
-  end subroutine work
+ class(newton_solve) :: this
 
-  !-------------------------------------------------------------------!
-  ! Routine that performs finishing tasks
-  !-------------------------------------------------------------------!
+ print *, "Initializing Newton Solve"
 
-  subroutine finish(this)
+end subroutine init
 
-    class(newton_solve) :: this
+!-------------------------------------------------------------------!
+! Routine that wraps the logic of newton solve                                                          
+!-------------------------------------------------------------------!
 
-    print *, "Finish Newton solve"
+subroutine work(this)
 
-  end subroutine finish
+  class(newton_solve) :: this
 
-  !-------------------------------------------------------------------!
-  ! Routine that performs newton solve                                                                   
-  !-------------------------------------------------------------------!
+  real(dp) :: R, dR
+  integer  :: n
 
-  subroutine solve(this)
+  print *, "Executing Newton solve"
 
-    class(newton_solve) :: this
+  newton: do n = 1, this % get_max_newton_iters()
 
-    ! perform initialization tasks
-    call this % init()
+     R = get_residual(1.0_dp, 1.0_dp, 1.0_dp)
 
-    ! perform newton solve
-    call this % work()
+  end do newton
 
-    ! perform finalization tasks
-    call this % finish()
+end subroutine work
 
-  end subroutine solve
+!-------------------------------------------------------------------!
+! Routine that performs finishing tasks
+!-------------------------------------------------------------------!
+
+subroutine finish(this)
+
+  class(newton_solve) :: this
+
+  print *, "Finish Newton solve"
+
+end subroutine finish
+
+!-------------------------------------------------------------------!
+! Routine that performs newton solve                                                                   
+!-------------------------------------------------------------------!
+
+subroutine solve(this)
+
+  class(newton_solve) :: this
+
+  ! perform initialization tasks
+  call this % init()
+
+  ! perform newton solve
+  call this % work()
+
+  ! perform finalization tasks
+  call this % finish()
+
+end subroutine solve
 
 end module newton_solve_class
 
@@ -426,20 +468,20 @@ end module newton_solve_class
 
 program test_newton_solve_class
 
-  use newton_solve_class
-  implicit none  
+use newton_solve_class
+implicit none  
 
-  type(newton_solve) :: newton
+type(newton_solve) :: newton
 
-  ! call newton % init()
+! call newton % init()
 
-  ! Set optional parameters
-  call newton % set_num_vars(1)
-  call newton % set_exit_on_failure(.true.)
-  
-  ! solve the problem
-  call newton % solve()
+! Set optional parameters
+call newton % set_num_vars(1)
+call newton % set_exit_on_failure(.true.)
 
+! solve the problem
+call newton % solve()
+
+contains
 
 end program test_newton_solve_class
-
