@@ -150,7 +150,7 @@ contains
     integer :: step_num
     dR(step_num, :, :) = K + C/dt + M/dt2
   end subroutine jacobian
-
+  
   ! update the states at each newton iteration
   subroutine update_states(step_num)
     
@@ -203,7 +203,7 @@ contains
             &+ alpha(1, 3)*qdot(step_num-2,:)/dt
     end if
 
-    print*, q(:, :),  dq, norm2(dq)
+!    print*, norm2(dq)
 
   end subroutine update_states
 
@@ -226,7 +226,7 @@ module newton_solve_bean_class
 
   type newton_solve_bean
 
-     private
+!     private
 
      !----------------------------------------------------------------!
      ! Basic setup variables
@@ -234,17 +234,7 @@ module newton_solve_bean_class
 
      integer :: max_newton_iters = 50
      integer :: nvars = 1
-
-     !----------------------------------------------------------------!
-     ! Solution variables
-     !----------------------------------------------------------------!
-
-     real(dp) :: init_q
-     real(dp) :: init_qdot
-
-     real(dp) :: q
-     real(dp) :: qdot
-     real(dp) :: qddot
+     integer :: iter_num = 0
 
      !----------------------------------------------------------------!
      ! Stopping criteria
@@ -259,8 +249,7 @@ module newton_solve_bean_class
      real(dp) :: rtol_unrm = 1.0d-6
 
      ! actual norm values
-     real(dp) :: rnrm      = 0.0_dp
-     real(dp) :: unrm      = 0.0_dp 
+     real(dp), dimension(:), allocatable :: rnrm, unrm
 
      !----------------------------------------------------------------!
      ! Print and solution write control
@@ -269,6 +258,8 @@ module newton_solve_bean_class
      integer :: filenum              = 6 
      logical :: write_newton_details = .true.
      logical :: exit_on_failure      = .false. 
+     
+     logical :: converged = .false. 
 
    contains
 
@@ -285,7 +276,7 @@ module newton_solve_bean_class
      procedure :: set_write_newton_details
      procedure :: set_exit_on_failure
 
-     procedure :: set_init_x, set_init_xdot
+!     procedure :: set_init_x, set_init_xdot
 
   end type newton_solve_bean
 
@@ -484,27 +475,27 @@ contains
   ! Set the initial value of x (starting point)
   !-------------------------------------------------------------------!
 
-  subroutine set_init_x(this, init_q)
-
-    class(newton_solve_bean) :: this
-    real(dp) :: init_q
-
-    this % init_q = init_q
-
-  end subroutine set_init_x
-
-  !-------------------------------------------------------------------!
-  ! Set the initial value of x (starting point)
-  !-------------------------------------------------------------------!
-
-  subroutine set_init_xdot(this, init_qdot)
-
-    class(newton_solve_bean) :: this
-    real(dp) :: init_qdot
-
-    this % init_qdot = init_qdot
-
-  end subroutine set_init_xdot
+!!$  subroutine set_init_x(this, init_q)
+!!$
+!!$    class(newton_solve_bean) :: this
+!!$    real(dp) :: init_q
+!!$
+!!$    this % init_q = init_q
+!!$
+!!$  end subroutine set_init_x
+!!$
+!!$  !-------------------------------------------------------------------!
+!!$  ! Set the initial value of x (starting point)
+!!$  !-------------------------------------------------------------------!
+!!$
+!!$  subroutine set_init_xdot(this, init_qdot)
+!!$
+!!$    class(newton_solve_bean) :: this
+!!$    real(dp) :: init_qdot
+!!$
+!!$    this % init_qdot = init_qdot
+!!$
+!!$  end subroutine set_init_xdot
 
 end module newton_solve_bean_class
 
@@ -551,6 +542,8 @@ contains
   procedure, private :: init  => init
   procedure, private :: finish => finish
   procedure, private :: work => work
+  procedure, private :: linear_solve
+  procedure, private :: check_stop
 
   ! public procedures
   procedure, public :: solve => solve
@@ -570,6 +563,39 @@ end type newton_solve
 !!$end interface
 
 contains
+
+  ! solve the linear system to find the newton update
+  subroutine linear_solve(this, step_num)
+    class(newton_solve) :: this
+    integer :: step_num
+    real(dp):: rtmp, drtmp
+    
+    if (ndim .eq. 1) then
+       rtmp  = R(step_num, 1)
+       drtmp = dR(step_num, 1, 1)
+       dq = -rtmp/drtmp
+       print*, q(step_num-1, :), qdot(step_num-1, :),qddot(step_num-1, :)
+    else
+       stop"linear solve not implemented for ndim>1"
+    end if
+
+  end subroutine linear_solve
+
+  ! solve the linear system to find the newton update
+  subroutine check_stop(this, step_num)
+    class(newton_solve) :: this
+    integer :: step_num
+    
+    this % rnrm (this % iter_num) = norm2(R(step_num,:))
+    this % unrm (this % iter_num) = norm2(dq)
+    
+    print*, this % iter_num, this % rnrm (this % iter_num), this % unrm (this % iter_num)
+
+    if ((this % rnrm (this % iter_num) .le. this % get_atol_rnrm() ) .or. &
+         &(this % unrm(this % iter_num) .le. this % get_atol_unrm() )) &
+         & this % converged = .true.
+    
+  end subroutine check_stop
 
   !-------------------------------------------------------------------!
   ! Return the residual of the function
@@ -603,6 +629,15 @@ subroutine init(this)
 
  print *, "Initializing Newton Solve"
  
+ if (allocated(this%rnrm)) deallocate(this%rnrm)
+ allocate(this%rnrm(this%get_max_newton_iters()))
+ this%rnrm = 0.0_dp
+
+ if (allocated(this%unrm)) deallocate(this%unrm)
+ allocate(this%unrm(this%get_max_newton_iters()))
+ this%unrm = 0.0_dp
+
+ ! initialize module variables
  call initialize(this%get_num_vars(), 2)
 
 end subroutine init
@@ -619,18 +654,30 @@ subroutine work(this)
   integer  :: n
 
   print *, "Executing Newton solve"
- 
-  
+
   newton: do n = 1, this % get_max_newton_iters()
-     
+
+     ! call this % set_iter_num(n)
+     this % iter_num = this% iter_num + 1
+
      call residual(2)
+
      call jacobian(2)
+
+     call this % linear_solve(2)
+
      call update_states(2)
-!     call check_stop
+
+     call this % check_stop(2)
+     
+     if (n .gt. 1) then
+        if (this % converged) exit newton
+     end if
 
   end do newton
 
 end subroutine work
+
 
 !-------------------------------------------------------------------!
 ! Routine that performs finishing tasks
@@ -641,7 +688,10 @@ subroutine finish(this)
   class(newton_solve) :: this
 
   print *, "Finish Newton solve"
-
+  
+  if (allocated(this%rnrm)) deallocate(this%rnrm)
+  if (allocated(this%unrm)) deallocate(this%unrm)
+ 
   call finalize
 
 end subroutine finish
