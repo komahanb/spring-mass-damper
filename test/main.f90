@@ -141,6 +141,15 @@ program spring_mass_damper
 
      newton: do n = 1, max_newton_iters
 
+        
+        ! get the residual
+        R = M*uddot(i) + C*udot(i) + K*u(i)
+
+        ! find the update
+        du = -R/dR
+
+        ! apply the updates
+        u(i) = u(i) + du
         !-------------------------------------------------------------!
         ! FD approximation to I derivative
         !-------------------------------------------------------------!
@@ -180,15 +189,7 @@ program spring_mass_damper
                 &+ alpha(1, 2)*udot(i-1)/dt &
                 &+ alpha(1, 3)*udot(i-2)/dt
         end if
-        
-        ! get the residual
-        R = M*uddot(i) + C*udot(i) + K*u(i)
 
-        ! find the update
-        du = -R/dR
-
-        ! apply the updates
-        u(i) = u(i) + du
 
         if (newton_details) print*, u(i), udot(i), uddot(i), du, R
 
