@@ -13,6 +13,202 @@ module precision
 
 end module precision
 
+
+!=====================================================================!
+! Module that stores the state of the function
+!=====================================================================!
+
+module variables
+
+  use precision
+
+  implicit none
+
+  integer :: ndim   = 0
+  integer :: nsteps = 1
+
+  !-------------------------------------------------------------------!
+  ! The state variables
+  !-------------------------------------------------------------------!
+
+  real(dp), dimension(:,:)   , allocatable :: q
+  real(dp), dimension(:,:)   , allocatable :: qdot
+  real(dp), dimension(:,:)   , allocatable :: qddot
+
+  real(dp), dimension(:,:)   , allocatable :: R 
+  real(dp), dimension(:,:,:) , allocatable :: dR
+  real(dp), dimension(:)     , allocatable :: dq
+
+  !-------------------------------------------------------------------!
+  ! The system parameters 
+  !-------------------------------------------------------------------!
+
+  real(dp) :: M = 1.0_dp
+  real(dp) :: C = 0.02_dp
+  real(dp) :: K = 5.0_dp
+
+  !-------------------------------------------------------------------!
+  !  Integration constants
+  !-------------------------------------------------------------------!  
+
+  integer, parameter :: max_bdf_order = 3 
+  integer, parameter :: max_fo_terms = max_bdf_order + 1
+  integer, parameter :: max_so_terms = 2*max_bdf_order + 1
+  
+  real(dp)  :: alpha(max_bdf_order, max_fo_terms) = 0.0_dp
+  real(dp)  :: beta(max_bdf_order, max_so_terms) = 0.0_dp
+  
+  real(dp), parameter :: tinit  = 0.0_dp
+  real(dp), parameter :: tfinal = 10.0_dp
+
+  real(dp) :: dt, dt2
+
+contains
+  
+  ! initialization tasks for the variables in simulation
+  subroutine initialize(ndimin, nstepsin)
+
+    integer, intent(in) :: ndimin, nstepsin
+
+    write(*, *) "Initializing variables"
+
+    ! set the number of dimensions or variables
+    ndim = ndimin
+    if (ndim .eq. 0) stop "Wrong dimension"
+
+    ! set the number of time steps
+    nsteps = nstepsin
+    if (nsteps .le. 0) stop "Wrong number of time steps"
+
+    if (allocated(q)) deallocate(q)
+    allocate(q(nsteps, ndim))
+    q = 0.0_dp
+
+    if (allocated(qdot)) deallocate(qdot)
+    allocate(qdot(nsteps, ndim))
+    qdot = 0.0_dp
+
+    if (allocated(qddot)) deallocate(qddot)
+    allocate(qddot(nsteps, ndim))
+    qddot = 0.0_dp
+
+    if (allocated(R)) deallocate(R)
+    allocate(R(nsteps, ndim))
+    R = 0.0_dp
+
+    if (allocated(dq)) deallocate(dq)
+    allocate(dq(ndim))
+    dq = 0.0_dp
+
+    if (allocated(dR)) deallocate(dR)
+    allocate(dR(nsteps, ndim, ndim))
+    dR = 0.0_dp
+    
+    !-------------------------------------------------------------------!
+    ! Setup BDF coefficients
+    !-------------------------------------------------------------------!
+    
+    ! set the BDF coefficeints for first derivative
+    alpha(1, 1:2) = (/ 1.0, -1.0 /)
+    alpha(2, 1:3) = (/ 1.5_dp, -2.0_dp, 0.5_dp /)
+    alpha(3, 1:4) = (/ 11.0_dp/6.0_dp, -3.0_dp, 1.5_dp, -1.0_dp/3.0_dp /)
+
+    ! set the BDF coefficient for second derivative
+    beta(1, 1:3) = (/ 1.0_dp, -2.0_dp, 1.0_dp /)
+    beta(2, 1:5) = (/ 2.25_dp, -6.0_dp, 5.5_dp, -2.0_dp, 0.25_dp /)
+
+    dt  = (tfinal-tinit)/dble(nsteps)
+    dt2 =  dt*dt
+
+    ! initial condition
+    q(1, :) = 1.0_dp
+    
+  end subroutine initialize
+
+  ! finalization tasks
+  subroutine finalize()
+
+    write(*, *) "Finalize variables"
+
+    if (allocated(q))     deallocate(q)
+    if (allocated(qdot))  deallocate(qdot)
+    if (allocated(qddot)) deallocate(qddot)
+    if (allocated(R))     deallocate(R)
+    if (allocated(dR))    deallocate(dR)
+    if (allocated(dq))    deallocate(dq)
+
+  end subroutine finalize
+  
+  ! implementation for residual
+  subroutine residual(step_num)
+    integer  :: step_num
+    R(step_num, :) = M*qddot(step_num,:) + C*qdot(step_num,:) + K*q(step_num,:)
+  end subroutine residual
+  
+  ! implementation for the jacobian
+  subroutine jacobian(step_num)
+    integer :: step_num
+    dR(step_num, :, :) = K + C/dt + M/dt2
+  end subroutine jacobian
+
+  ! update the states at each newton iteration
+  subroutine update_states(step_num)
+    
+    integer :: step_num
+
+    !-------------------------------------------------------------!
+    ! Update the state
+    !-------------------------------------------------------------!
+ 
+    q(step_num,:) = q(step_num,:) + dq(:)
+    
+    !-------------------------------------------------------------!
+    ! FD approximation to I derivative
+    !-------------------------------------------------------------!
+
+    if (step_num .eq. 2) then
+       ! first order approximation to I derivative
+       qdot(step_num,:) &
+            &= alpha(1, 1)*q(step_num,:)/dt &
+            &+ alpha(1, 2)*q(step_num-1,:)/dt
+    else if (step_num .eq. 3) then
+       ! second order approximation to I derivative
+       qdot(step_num,:) &
+            &= alpha(2, 1)*q(step_num,:)/dt &
+            &+ alpha(2, 2)*q(step_num-1,:)/dt &
+            &+ alpha(2, 3)*q(step_num-2,:)/dt
+    else
+       ! third order approximation to I derivative
+       qdot(step_num,:) &
+            &= alpha(3, 1)*q(step_num,:)/dt &
+            &+ alpha(3, 2)*q(step_num-1,:)/dt &
+            &+ alpha(3, 3)*q(step_num-2,:)/dt &
+            &+ alpha(3, 4)*q(step_num-3,:)/dt
+    end if
+
+    !-------------------------------------------------------------!
+    ! FD approximation to II derivative
+    !-------------------------------------------------------------!
+    
+    if (step_num .le. 3) then
+       ! first order approx to II derivative
+       qddot(step_num,:) &
+            &= alpha(1, 1)*qdot(step_num,:)/dt &
+            &+ alpha(1, 2)*qdot(step_num-1,:)/dt
+    else
+       ! second order approx to II derivative
+       qddot(step_num,:) &
+            &= alpha(1, 1)*qdot(step_num,:)/dt &
+            &+ alpha(1, 2)*qdot(step_num-1,:)/dt &
+            &+ alpha(1, 3)*qdot(step_num-2,:)/dt
+    end if
+
+    print*, q(:, :),  dq, norm2(dq)
+
+  end subroutine update_states
+
+end module variables
+
 !=====================================================================!
 ! A module that wraps all the data used in Newton solve
 !
@@ -335,6 +531,7 @@ module newton_solve_class
   ! import dependencies
   use precision
   use newton_solve_bean_class
+  use variables
 
   ! No implicit varaible definitions
   implicit none
@@ -377,24 +574,24 @@ contains
   !-------------------------------------------------------------------!
   ! Return the residual of the function
   !-------------------------------------------------------------------!
-
-function get_residual(q, qdot, qddot) result(func_val)
-
- use precision
- 
- real(dp), optional :: q
- real(dp), optional :: qdot
- real(dp), optional :: qddot
-
- real(dp) :: func_val
-
- real(dp) :: M = 1.0_dp
- real(dp) :: C = 0.02_dp
- real(dp) :: K = 5.0_dp
-
- func_val = M*qddot + C*qdot + K*q
-
-end function get_residual
+!!$
+!!$function get_residual(q, qdot, qddot) result(func_val)
+!!$
+!!$ use precision
+!!$ 
+!!$ real(dp), optional :: q
+!!$ real(dp), optional :: qdot
+!!$ real(dp), optional :: qddot
+!!$
+!!$ real(dp) :: func_val
+!!$
+!!$ real(dp) :: M = 1.0_dp
+!!$ real(dp) :: C = 0.02_dp
+!!$ real(dp) :: K = 5.0_dp
+!!$
+!!$ func_val = M*qddot + C*qdot + K*q
+!!$
+!!$end function get_residual
 
 !-------------------------------------------------------------------!
 ! Routine for initialization tasks
@@ -405,6 +602,8 @@ subroutine init(this)
  class(newton_solve) :: this
 
  print *, "Initializing Newton Solve"
+ 
+ call initialize(this%get_num_vars(), 2)
 
 end subroutine init
 
@@ -420,10 +619,14 @@ subroutine work(this)
   integer  :: n
 
   print *, "Executing Newton solve"
-
+ 
+  
   newton: do n = 1, this % get_max_newton_iters()
-
-     R = get_residual(1.0_dp, 1.0_dp, 1.0_dp)
+     
+     call residual(2)
+     call jacobian(2)
+     call update_states(2)
+!     call check_stop
 
   end do newton
 
@@ -438,6 +641,8 @@ subroutine finish(this)
   class(newton_solve) :: this
 
   print *, "Finish Newton solve"
+
+  call finalize
 
 end subroutine finish
 
@@ -469,18 +674,28 @@ end module newton_solve_class
 program test_newton_solve_class
 
 use newton_solve_class
+!use variables
+
 implicit none  
 
 type(newton_solve) :: newton
 
-! call newton % init()
+integer :: nvars  = 1
+integer :: nsteps = 1000
+
+!call newton % init()
 
 ! Set optional parameters
-call newton % set_num_vars(1)
+call newton % set_num_vars(nvars)
 call newton % set_exit_on_failure(.true.)
 
 ! solve the problem
 call newton % solve()
+
+!call newton % finish()
+
+!call finalize
+
 
 contains
 
