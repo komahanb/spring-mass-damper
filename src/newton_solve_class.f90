@@ -203,7 +203,7 @@ contains
             &+ alpha(1, 3)*qdot(step_num-2,:)/dt
     end if
 
-!    print*, norm2(dq)
+    print*, dq,  q(step_num, :), qdot(step_num, :),qddot(step_num, :)
 
   end subroutine update_states
 
@@ -544,6 +544,7 @@ contains
   procedure, private :: work => work
   procedure, private :: linear_solve
   procedure, private :: check_stop
+  procedure, private :: extrapolate
 
   ! public procedures
   procedure, public :: solve => solve
@@ -573,8 +574,8 @@ contains
     if (ndim .eq. 1) then
        rtmp  = R(step_num, 1)
        drtmp = dR(step_num, 1, 1)
-       dq = -rtmp/drtmp
-       print*, q(step_num-1, :), qdot(step_num-1, :),qddot(step_num-1, :)
+       dq    = -rtmp/drtmp
+       !       print*, rtmp, drtmp, dq
     else
        stop"linear solve not implemented for ndim>1"
     end if
@@ -585,17 +586,30 @@ contains
   subroutine check_stop(this, step_num)
     class(newton_solve) :: this
     integer :: step_num
-    
+
     this % rnrm (this % iter_num) = norm2(R(step_num,:))
     this % unrm (this % iter_num) = norm2(dq)
-    
-    print*, this % iter_num, this % rnrm (this % iter_num), this % unrm (this % iter_num)
+
+    !    print*, this % iter_num, this % rnrm (this % iter_num), this % unrm (this % iter_num)
 
     if ((this % rnrm (this % iter_num) .le. this % get_atol_rnrm() ) .or. &
          &(this % unrm(this % iter_num) .le. this % get_atol_unrm() )) &
          & this % converged = .true.
-    
+
   end subroutine check_stop
+
+  ! extrapolate to next time step
+  subroutine extrapolate(this, step_num)
+    class(newton_solve) :: this
+    integer :: step_num
+    
+    if (step_num .gt. 1) then
+       q(step_num,:) = q(step_num-1,:) + qdot(step_num-1,:)*dt  &
+            &+ qddot(step_num-1,:)*dt2/2.0_dp
+    end if
+    
+  end subroutine extrapolate
+
 
   !-------------------------------------------------------------------!
   ! Return the residual of the function
@@ -639,6 +653,7 @@ subroutine init(this)
 
  ! initialize module variables
  call initialize(this%get_num_vars(), 2)
+! call this % extrapolate(step_num)
 
 end subroutine init
 
@@ -654,11 +669,15 @@ subroutine work(this)
   integer  :: n
 
   print *, "Executing Newton solve"
+  
+  call this % extrapolate(2)
 
   newton: do n = 1, this % get_max_newton_iters()
 
      ! call this % set_iter_num(n)
      this % iter_num = this% iter_num + 1
+
+     ! call this % extrapolate()
 
      call residual(2)
 
@@ -670,10 +689,8 @@ subroutine work(this)
 
      call this % check_stop(2)
      
-     if (n .gt. 1) then
-        if (this % converged) exit newton
-     end if
-
+     if (this % converged) exit newton
+     
   end do newton
 
 end subroutine work
