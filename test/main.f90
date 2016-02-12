@@ -41,11 +41,6 @@ program spring_mass_damper
   !-------------------------------------------------------------------!
   ! The system parameters 
   !-------------------------------------------------------------------!
-
-  real(dp) :: M = 1.0_dp
-  real(dp) :: C = 0.02_dp
-  real(dp) :: K = 5.0_dp
-
   !-------------------------------------------------------------------!
   ! The state variable and derivatives
   !-------------------------------------------------------------------!
@@ -55,17 +50,13 @@ program spring_mass_damper
   real(dp) :: uddot(num_time_steps+1) = 0.0_dp
 
   ! exact solution and error
-  real(dp) :: exact(num_time_steps+1) = 0.0_dp
-  real(dp) :: error(num_time_steps+1) = 0.0_dp
-  real(dp) :: rmse = 0.0_dp
-
   real(dp) :: dR = 0.0_dp  ! jacobian
   real(dp) :: R = 0.0_dp   ! residual
   real(dp) :: du = 0.0_dp  ! state update
 
   real(dp) :: rnrm = 0.0_dp, unrm  = 0.0_dp 
-  real(dp) :: rnrm_tol = 1.0d-8
-  real(dp) :: unrm_tol = 1.0d-8
+  real(dp) :: rnrm_tol = 1.0d-6
+  real(dp) :: unrm_tol = 1.0d-6
 
   integer  :: order = 0
   integer  :: i, n ! loop variable
@@ -84,24 +75,24 @@ program spring_mass_damper
   ! set the BDF coefficient for second derivative
   beta(1, 1:3) = (/ 1.0_dp, -2.0_dp, 1.0_dp /)
   beta(2, 1:5) = (/ 2.25_dp, -6.0_dp, 5.5_dp, -2.0_dp, 0.25_dp /)
-! beta(3, 1:7) = (/  /)
+  ! beta(3, 1:7) = (/  /)
 
   !-------------------------------------------------------------------!
   ! Set the initial condition (known)
   !-------------------------------------------------------------------!
 
-  u(1) = 1.0_dp
-  udot(1) = 0.0_dp
-  uddot(1) = -(C*udot(1) + K*u(1))/M   ! rearrange the governing eqn
+  u(1) = 0.0_dp
+  udot(1) = 10.0_dp
+  !  uddot(1) = -(C*udot(1) + K*u(1))/M   ! rearrange the governing eqn
 
   ! the exact solution at initial step
-  exact(1) = exact_solution(dble(0)*dt,u(1),udot(1))
-  error(1) = exact(1) - u(1)
+  !  exact(1) = exact_solution(dble(0)*dt,u(1),udot(1))
+  !  error(1) = exact(1) - u(1)
 
   ! open file and write the output at the initial step
   open(unit = 88, file="solution.dat")
-  write(88,*) dble(0)*dt, 0, u(1), udot(1), uddot(1), du, R, exact(1), error(1)
-  
+  write(88,*) dble(0)*dt, 0, u(1), udot(1), uddot(1), du !, R, exact(1), error(1)
+
 !!$  ! extrapolate to the first time step
 !!$  u(2) = u(1) + udot(1)*dt + uddot(1)*dt2/2.0d0
 !!$  ! approximate udot using first order BDF
@@ -113,7 +104,9 @@ program spring_mass_damper
 !!$       &u(2) - exact_solution(dble(0)*dt,u(1),udot(1))
 
   ! get the jacobian (system matrix)
-  dR = K + C/dt + M/dt2
+  ! dR = K + C/dt + M/dt2
+
+  dR = 2.0_dp*cos(2.0_dp*u(1))/dt2 - 8.0_dp*sin(2.0_dp*u(1))*udot(1)/dt
 
   time: do i = 2, num_time_steps + 1 
 
@@ -141,15 +134,19 @@ program spring_mass_damper
 
      newton: do n = 1, max_newton_iters
 
-        
+
         ! get the residual
-        R = M*uddot(i) + C*udot(i) + K*u(i)
+        R  = -4.0_dp*sin(2.0_dp*u(i))*udot(i)*udot(i)  + 2.0_dp*cos(2.0_dp*u(i))*uddot(i) + 1.0_dp*9.8_dp
+
+        ! get jacobian
+        dR = 2.0_dp*cos(2.0_dp*u(i))/dt2 - 8.0_dp*sin(2.0_dp*u(i))*udot(i)/dt
 
         ! find the update
         du = -R/dR
 
         ! apply the updates
         u(i) = u(i) + du
+
         !-------------------------------------------------------------!
         ! FD approximation to I derivative
         !-------------------------------------------------------------!
@@ -210,25 +207,12 @@ program spring_mass_damper
           &------------&
           &-----------------------------------------------------------&
           &--------------"
-     
-     exact(i) = exact_solution(dble(i-1)*dt,u(1),udot(1))
-     error(i) = exact(i) - u(i)
 
-     write(88,*) dble(i-1)*dt, n, u(i), udot(i), uddot(i), du, R, exact(i), error(i)
-     
+     write(88,*) dble(i-1)*dt, n, u(i), udot(i), uddot(i), du, R
+
   end do time
 
   close(88)
-
-  ! find the RMSE
-!!$  do i = 1, num_time_steps + 1 
-!!$     rmse = rmse + error(i)**2
-!!$  end do
-!!$  rmse = sqrt(rmse/dble(num_time_steps+1))
-
-  rmse = sqrt(sum(error**2)/dble(num_time_steps + 1))
-  
-  print*, "RMSE=", rmse     
 
 contains
 
@@ -240,17 +224,7 @@ contains
 
     real(dp) :: t, x, x0, v0
     complex(dp) :: mul, a, b, term1, term2, term3
-
-    a = 0.02_dp
-    b = 5.0_dp
-
-    mul = exp(-a*t*0.5_dp)/sqrt(a*a - 4.0_dp*b)
-    term1 = a*sinh(0.5_dp*t*sqrt(a*a - 4.0_dp*b))
-    term2 = sqrt(a*a - 4.0_dp*b)*cosh(0.5_dp*t*sqrt(a*a - 4.0_dp*b))
-    term3 = 2.0_dp*v0*sinh(0.5_dp*t*sqrt(a*a - 4.0_dp*b))
-
-    x = real(mul*((term1 + term2)*x0 + term3))
-
+    stop
   end function exact_solution
 
 end program spring_mass_damper
