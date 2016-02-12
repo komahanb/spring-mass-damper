@@ -23,7 +23,7 @@ program spring_mass_damper
   !-------------------------------------------------------------------!  
 
   integer, parameter :: max_bdf_order = 3       ! maximum BDF integ order
-  integer, parameter :: num_time_steps = 10000    ! number of time steps
+  integer, parameter :: num_time_steps = 10000  ! number of time steps
   integer, parameter :: max_newton_iters = 50   ! number of newton iters
 
   integer, parameter :: max_fo_terms = max_bdf_order + 1
@@ -33,7 +33,7 @@ program spring_mass_damper
   real(dp)  :: beta(max_bdf_order, max_so_terms) = 0.0_dp
 
   real(dp), parameter :: tinit  = 0.0_dp
-  real(dp), parameter :: tfinal = 10.0_dp
+  real(dp), parameter :: tfinal = 100.0_dp
 
   real(dp), parameter :: dt = (tfinal-tinit)/dble(num_time_steps)
   real(dp), parameter :: dt2 = dt*dt
@@ -55,13 +55,19 @@ program spring_mass_damper
   real(dp) :: du = 0.0_dp  ! state update
 
   real(dp) :: rnrm = 0.0_dp, unrm  = 0.0_dp 
-  real(dp) :: rnrm_tol = 1.0d-6
-  real(dp) :: unrm_tol = 1.0d-6
+  real(dp) :: rnrm_tol = 1.0d-8
+  real(dp) :: unrm_tol = 1.0d-8
 
   integer  :: order = 0
   integer  :: i, n ! loop variable
 
   logical  :: newton_details = .false.
+  
+  real(dp):: M, G, Cv
+    
+  M = 1.0_dp
+  G = -9.8_dp
+  Cv = 0.01_dp
 
   !-------------------------------------------------------------------!
   ! Setup BDF coefficients
@@ -83,16 +89,13 @@ program spring_mass_damper
 
   u(1) = 0.0_dp
   udot(1) = 10.0_dp
-  !  uddot(1) = -(C*udot(1) + K*u(1))/M   ! rearrange the governing eqn
 
-  ! the exact solution at initial step
-  !  exact(1) = exact_solution(dble(0)*dt,u(1),udot(1))
-  !  error(1) = exact(1) - u(1)
+  !  uddot(1) = -(C*udot(1) + K*u(1))/M   ! rearrange the governing eqn
 
   ! open file and write the output at the initial step
   open(unit = 88, file="solution.dat")
-  write(88,*) dble(0)*dt, 0, u(1), udot(1), uddot(1), du !, R, exact(1), error(1)
-
+  write(88,*) dble(0)*dt, 0, u(1), udot(1), uddot(1), du
+  
 !!$  ! extrapolate to the first time step
 !!$  u(2) = u(1) + udot(1)*dt + uddot(1)*dt2/2.0d0
 !!$  ! approximate udot using first order BDF
@@ -102,11 +105,6 @@ program spring_mass_damper
 
 !!$  print*, dble(1)*dt, u(2), udot(2), uddot(2), du, R, &
 !!$       &u(2) - exact_solution(dble(0)*dt,u(1),udot(1))
-
-  ! get the jacobian (system matrix)
-  ! dR = K + C/dt + M/dt2
-
-  dR = 2.0_dp*cos(2.0_dp*u(1))/dt2 - 8.0_dp*sin(2.0_dp*u(1))*udot(1)/dt
 
   time: do i = 2, num_time_steps + 1 
 
@@ -128,19 +126,24 @@ program spring_mass_damper
 
      ! approximate udot using first order BDF
      ! udot(i) = (u(i) - u(i-1))/dt
-
+     
      ! find uddot(3) algebraically
      ! uddot(i) = -(C*udot(i) + K*u(i))/M
 
      newton: do n = 1, max_newton_iters
 
-
         ! get the residual
-        R  = -4.0_dp*sin(2.0_dp*u(i))*udot(i)*udot(i)  + 2.0_dp*cos(2.0_dp*u(i))*uddot(i) + 1.0_dp*9.8_dp
-
+        R = M*(3.0 + cos(4.0_dp*u(i)))*uddot(i) + &
+             & 0.5_dp*Cv*(3.0 + cos(4.0_dp*u(i)))*udot(i) &
+             & - 2.0_dp*M*sin(4.0_dp*u(i))*udot(i)*udot(i) + &
+             & M*G*cos(2.0_dp*u(i))
+        
         ! get jacobian
-        dR = 2.0_dp*cos(2.0_dp*u(i))/dt2 - 8.0_dp*sin(2.0_dp*u(i))*udot(i)/dt
-
+        dR = M*(3.0 + cos(4.0_dp*u(i)))/dt2 &
+             & + (0.5_dp*Cv*(3.0 + cos(4.0_dp*u(i))) &
+             & - 4.0_dp*M*sin(4.0_dp*u(i))*udot(i))/dt &
+             & + M*G*cos(2.0_dp*u(i))
+        
         ! find the update
         du = -R/dR
 
