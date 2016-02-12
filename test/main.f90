@@ -23,7 +23,7 @@ program spring_mass_damper
   !-------------------------------------------------------------------!  
 
   integer, parameter :: max_bdf_order = 3       ! maximum BDF integ order
-  integer, parameter :: num_time_steps = 10000  ! number of time steps
+  integer, parameter :: num_time_steps = 1000   ! number of time steps
   integer, parameter :: max_newton_iters = 50   ! number of newton iters
 
   integer, parameter :: max_fo_terms = max_bdf_order + 1
@@ -33,7 +33,7 @@ program spring_mass_damper
   real(dp)  :: beta(max_bdf_order, max_so_terms) = 0.0_dp
 
   real(dp), parameter :: tinit  = 0.0_dp
-  real(dp), parameter :: tfinal = 100.0_dp
+  real(dp), parameter :: tfinal = 10.0_dp
 
   real(dp), parameter :: dt = (tfinal-tinit)/dble(num_time_steps)
   real(dp), parameter :: dt2 = dt*dt
@@ -134,15 +134,15 @@ program spring_mass_damper
 
         ! get the residual
         R = M*(3.0 + cos(4.0_dp*u(i)))*uddot(i) + &
-             & 0.5_dp*Cv*(3.0 + cos(4.0_dp*u(i)))*udot(i) &
+             & 0.5_dp*Cv*(3.0_dp + cos(4.0_dp*u(i)))*udot(i) &
              & - 2.0_dp*M*sin(4.0_dp*u(i))*udot(i)*udot(i) + &
              & M*G*cos(2.0_dp*u(i))
         
         ! get jacobian
         dR = M*(3.0 + cos(4.0_dp*u(i)))/dt2 &
-             & + (0.5_dp*Cv*(3.0 + cos(4.0_dp*u(i))) &
+             & + (0.5_dp*Cv*(3.0_dp + cos(4.0_dp*u(i))) &
              & - 4.0_dp*M*sin(4.0_dp*u(i))*udot(i))/dt &
-             & + M*G*cos(2.0_dp*u(i))
+             & - 2.0_dp*M*G*sin(2.0_dp*u(i))
         
         ! find the update
         du = -R/dR
