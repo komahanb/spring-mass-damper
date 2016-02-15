@@ -13,6 +13,218 @@ module precision
 
 end module precision
 
+!=====================================================================!
+! Module that wraps the backward difference integration logic
+!=====================================================================!
+
+module backward_difference
+
+  use precision
+
+  implicit none
+
+  ! all entities are private by default
+  private                                                               
+  
+  ! expose only the functions that are needed by the endpoints
+  public get_bdf_coeffs
+
+  ! get_approx_q_dot,&
+  ! & get_approx_q_double_dot
+  !get_updated_q, get_updated_q_dot, get_updated_q_double_dot,&   
+  
+!!$  integer  :: nvars
+!!$  
+!!$  real(dp) :: aa = 1.0_dp
+!!$  real(dp) :: bb = 1.0_dp
+!!$ 
+  
+contains
+
+
+  !-------------------------------------------------------------------!
+  ! Returns the bdf coeffs (unscaled with respect to the step size h)
+  !-------------------------------------------------------------------!
+  ! Input:
+  !-------------------------------------------------------------------!
+  ! d : d-th derivative
+  ! m : order of accuracy
+  !-------------------------------------------------------------------!
+  ! Output:
+  !-------------------------------------------------------------------!
+  ! Array of size (d+m) containing the coefficients
+  !-------------------------------------------------------------------!
+  
+  function get_bdf_coeffs(d, m) result(c)
+
+    integer(sp), intent(in)    :: d             ! d-th derivative e.g. first or second derivative
+    integer(sp), intent(in)    :: m             ! m-th order accurate
+    integer(sp)                :: n             ! number of points needed for the required degree and accuracy
+
+    real(dp)                   :: c(d+m)        ! vector of coefficients used to approximate derivate
+    real(dp)                   :: x(d+m)        ! vector of evaluation points (not needed here)
+    real(dp), parameter        :: h = 1.0_dp    ! if we set h=dT we will get the scaled coeffs
+
+    n = m +d                                    ! number of points needed for the reqd accuracy and degree
+    call differ_backward ( h, d, m, c, x )      ! calling a library function
+
+    !    c = reverse_real(c)                         ! store in backward order for convenience
+    
+!!$x = reverse_real(x)                         ! store in backward order for convenience
+    
+  end function get_bdf_coeffs
+
+!!$
+!!$  !-------------------------------------------------------------------!
+!!$  ! updates the q vector value with the computed update
+!!$  !-------------------------------------------------------------------!
+!!$
+!!$  function get_updated_q(old_q, del_q) result(new_q)
+!!$
+!!$    real(dp), intent(in)           :: del_q(nvars)
+!!$    real(dp), intent(in)           :: old_q(nvars)
+!!$    real(dp)                       :: new_q(nvars)
+!!$
+!!$    new_q(:) = old_q(:) + del_q(:)
+!!$
+!!$  end function get_updated_q
+!!$
+!!$  !-------------------------------------------------------------------!
+!!$  ! updates the q_dot vector value with the computed update
+!!$  !-------------------------------------------------------------------!
+!!$
+!!$  function get_updated_q_dot(old_q_dot, del_q) result(new_q_dot)
+!!$
+!!$    real(dp), intent(in)           :: del_q(nvars)
+!!$    real(dp), intent(in)           :: old_q_dot(nvars)
+!!$    real(dp)                       :: new_q_dot(size(old_q_dot))
+!!$
+!!$    !aa=alpha0/dT (globally set)
+!!$
+!!$    new_q_dot(:) = old_q_dot(:) + aa*del_q(:)   
+!!$
+!!$  end function get_updated_q_dot
+!!$
+!!$  !-------------------------------------------------------------------!
+!!$  ! updates the q_double_dot vector value with the computed update
+!!$  !-------------------------------------------------------------------!
+!!$
+!!$  function get_updated_q_double_dot(old_q_double_dot, del_q)&
+!!$       & result(new_q_double_dot)
+!!$
+!!$    real(dp), intent(in)           :: del_q(nvars)
+!!$    real(dp), intent(in)           :: old_q_double_dot(nvars)
+!!$    real(dp)                       :: new_q_double_dot(nvars)
+!!$
+!!$    !bb=beta0/dT**2 (globally set)
+!!$
+!!$    new_q_double_dot(:) = old_q_double_dot(:) + bb*del_q(:)
+!!$
+!!$  end function get_updated_q_double_dot
+
+  !-------------------------------------------------------------------!
+  ! Returns the extrapolated value of q based on first and second
+  ! derivatives
+  !-------------------------------------------------------------------!
+!!$
+!!$  function extraopolate(dt, old_q, old_q_dot, old_q_double_dot) &
+!!$       & result(new_q)
+!!$    real(dp), intent(in)           :: dt
+!!$    real(dp), intent(in)           :: old_q(nvars), old_q_dot(nvars)
+!!$    real(dp), intent(in), optional :: old_q_double_dot(nvars)
+!!$    real(dp)                       :: new_q(nvars)
+!!$
+!!$    if (present(old_q_double_dot)) then
+!!$       new_q(:) = old_q(:) + dT*old_q_dot(:) &
+!!$            &+ dT**2*old_q_double_dot(:)/2.0_dp
+!!$    else 
+!!$       new_q(:) = old_q(:) + dT*old_q_dot(:)
+!!$    end if
+!!$
+!!$  end function get_approx_q
+
+  !# tested OK, just need to check the sign of the derivative how to
+  !# deal with initial steps?
+
+  !-------------------------------------------------------------------!
+  ! Returns the approximated first derivative. Use 'q' to produce an
+  ! m-th order approximation to q_dot
+  !
+  !     ! q = [t= 0                , (q1, q2, q_{nvars}), 
+  !      t= 0+dT          , (q1, q2, q_{nvars}),
+  !         .                ,          .         ,
+  !         .                ,          .         ,
+  !      t= 0+k*dT        , (q1, q2, q_{nvars})]  
+  !
+  !-------------------------------------------------------------------!
+!!$
+!!$  function get_approx_q_dot(q, m, dt) result(q_dot)
+!!$
+!!$    integer(sp), parameter   :: degree = 1           ! since we are approximating first derivative
+!!$    integer(sp)              :: cnt                  ! cnt = m + degree -1
+!!$    integer(sp), intent(in)  :: m                    ! m = order of accuracy of sought derivative
+!!$    real(dp), intent(in)     :: dt
+!!$    real(dp), intent(in)     :: q(0:degree+m-1,nvars)! matrix whose structure is drawn above
+!!$    real(dp)                 :: q_dot(nvars)         ! output first derivative vector
+!!$    real(dp)                 :: alpha(0:m+degree-1)  ! should always be based on the reqd. accuracy (not on the total available data like alpha(0 to k))
+!!$
+!!$    integer(sp)              :: i
+!!$
+!!$    ! getting the BDF coefficients
+!!$    alpha = get_bdf_coeffs(degree,m)
+!!$
+!!$    cnt = m + degree -1
+!!$    if (size(alpha).ne. cnt+1) stop"Wrong operation predicted. stopping" ! use something diff?
+!!$
+!!$    q_dot(:)=0._dp                                   ! initialize
+!!$    do i = 0, cnt                                    ! loop (sum) across the data points (0 to m in paper) 
+!!$       q_dot(:) =  q_dot(:) + alpha(i)*q(i,:)        ! find the cumulative sum
+!!$    end do
+!!$    q_dot(:) = q_dot(:)/dT
+!!$
+!!$  end function get_approx_q_dot
+!!$
+!!$  !# tested OK, just need to check the sign of the derivative how to
+!!$  !# deal with initial steps?
+!!$  !# !-------------------------------------------------------- !
+!!$  !# Returns the approximated second derivative. Use 'q' to produce
+!!$  !# an m-th order approximation to q_double_dot
+!!$  !# !--------------------------------------------------------
+!!$
+!!$  function get_approx_q_double_dot(q, m, dt) result(q_double_dot)
+!!$
+!!$    !------------------------------------------------------
+!!$    ! q = [t= 0                , (q1, q2, q_{nvars}), 
+!!$    !      t= 0+dT          , (q1, q2, q_{nvars}),
+!!$    !         .                ,          .         ,
+!!$    !         .                ,          .         ,
+!!$    !      t= 0+k*dT        , (q1, q2, q_{nvars})]
+!!$    !-----------------------------------------------------
+!!$
+!!$    integer(sp), parameter   :: degree = 2           ! since we are approximating second derivative
+!!$    integer(sp)              :: cnt                  ! cnt = m + degree -1
+!!$    integer(sp), intent(in)  :: m                    ! m = order of accuracy of sought derivative
+!!$    real(dp), intent(in)     :: q(0:degree+m-1,nvars)! matrix whose structure is drawn above
+!!$    real(dp), intent(in)     :: dt
+!!$    real(dp)                 :: q_double_dot(nvars)  ! output second derivative vector
+!!$    real(dp)                 :: beta(0:m+degree-1)   ! should always be based on the reqd. accuracy (not on the total available data like beta(0 to k))
+!!$    integer(sp)              :: i
+!!$    
+!!$    ! getting the BDF coefficients
+!!$    beta = get_bdf_coeffs(degree,m)
+!!$
+!!$    cnt = m + degree -1
+!!$    if (size(beta).ne. cnt+1) stop"Wrong operation predicted. stopping" ! use something diff?
+!!$
+!!$    q_double_dot(:)=0._dp                                         ! initialize
+!!$    do i = 0, cnt                                                 ! loop (sum) across the data points (0 to m in paper) 
+!!$       q_double_dot(:) =  q_double_dot(:) + beta(i)*q(i,:)        ! find the cumulative sum
+!!$    end do
+!!$    q_double_dot(:) = q_double_dot(:)/dT**2
+!!$
+!!$  end function get_approx_q_double_dot
+
+end module backward_difference
 
 !=====================================================================!
 ! Module that stores the state of the function
@@ -47,16 +259,6 @@ module variables
   real(dp) :: C = 0.02_dp
   real(dp) :: K = 5.0_dp
 
-  !-------------------------------------------------------------------!
-  !  Integration constants
-  !-------------------------------------------------------------------!  
-
-  integer, parameter :: max_bdf_order = 3 
-  integer, parameter :: max_fo_terms = max_bdf_order + 1
-  integer, parameter :: max_so_terms = 2*max_bdf_order + 1
-  
-  real(dp)  :: alpha(max_bdf_order, max_fo_terms) = 0.0_dp
-  real(dp)  :: beta(max_bdf_order, max_so_terms) = 0.0_dp
   
   real(dp), parameter :: tinit  = 0.0_dp
   real(dp), parameter :: tfinal = 10.0_dp
@@ -104,19 +306,7 @@ contains
     allocate(dR(nsteps, ndim, ndim))
     dR = 0.0_dp
     
-    !-------------------------------------------------------------------!
-    ! Setup BDF coefficients
-    !-------------------------------------------------------------------!
-    
-    ! set the BDF coefficeints for first derivative
-    alpha(1, 1:2) = (/ 1.0, -1.0 /)
-    alpha(2, 1:3) = (/ 1.5_dp, -2.0_dp, 0.5_dp /)
-    alpha(3, 1:4) = (/ 11.0_dp/6.0_dp, -3.0_dp, 1.5_dp, -1.0_dp/3.0_dp /)
-
-    ! set the BDF coefficient for second derivative
-    beta(1, 1:3) = (/ 1.0_dp, -2.0_dp, 1.0_dp /)
-    beta(2, 1:5) = (/ 2.25_dp, -6.0_dp, 5.5_dp, -2.0_dp, 0.25_dp /)
-
+ 
     dt  = (tfinal-tinit)/dble(nsteps)
     dt2 =  dt*dt
 
@@ -166,42 +356,44 @@ contains
     ! FD approximation to I derivative
     !-------------------------------------------------------------!
 
-    if (step_num .eq. 2) then
-       ! first order approximation to I derivative
-       qdot(step_num,:) &
-            &= alpha(1, 1)*q(step_num,:)/dt &
-            &+ alpha(1, 2)*q(step_num-1,:)/dt
-    else if (step_num .eq. 3) then
-       ! second order approximation to I derivative
-       qdot(step_num,:) &
-            &= alpha(2, 1)*q(step_num,:)/dt &
-            &+ alpha(2, 2)*q(step_num-1,:)/dt &
-            &+ alpha(2, 3)*q(step_num-2,:)/dt
-    else
-       ! third order approximation to I derivative
-       qdot(step_num,:) &
-            &= alpha(3, 1)*q(step_num,:)/dt &
-            &+ alpha(3, 2)*q(step_num-1,:)/dt &
-            &+ alpha(3, 3)*q(step_num-2,:)/dt &
-            &+ alpha(3, 4)*q(step_num-3,:)/dt
-    end if
+    ! get_approximated_q()
+    ! get
+!!$    if (step_num .eq. 2) then
+!!$       ! first order approximation to I derivative
+!!$       qdot(step_num,:) &
+!!$            &= alpha(1, 1)*q(step_num,:)/dt &
+!!$            &+ alpha(1, 2)*q(step_num-1,:)/dt
+!!$    else if (step_num .eq. 3) then
+!!$       ! second order approximation to I derivative
+!!$       qdot(step_num,:) &
+!!$            &= alpha(2, 1)*q(step_num,:)/dt &
+!!$            &+ alpha(2, 2)*q(step_num-1,:)/dt &
+!!$            &+ alpha(2, 3)*q(step_num-2,:)/dt
+!!$    else
+!!$       ! third order approximation to I derivative
+!!$       qdot(step_num,:) &
+!!$            &= alpha(3, 1)*q(step_num,:)/dt &
+!!$            &+ alpha(3, 2)*q(step_num-1,:)/dt &
+!!$            &+ alpha(3, 3)*q(step_num-2,:)/dt &
+!!$            &+ alpha(3, 4)*q(step_num-3,:)/dt
+!!$    end if
 
     !-------------------------------------------------------------!
     ! FD approximation to II derivative
     !-------------------------------------------------------------!
-    
-    if (step_num .le. 3) then
-       ! first order approx to II derivative
-       qddot(step_num,:) &
-            &= alpha(1, 1)*qdot(step_num,:)/dt &
-            &+ alpha(1, 2)*qdot(step_num-1,:)/dt
-    else
-       ! second order approx to II derivative
-       qddot(step_num,:) &
-            &= alpha(1, 1)*qdot(step_num,:)/dt &
-            &+ alpha(1, 2)*qdot(step_num-1,:)/dt &
-            &+ alpha(1, 3)*qdot(step_num-2,:)/dt
-    end if
+!!$    
+!!$    if (step_num .le. 3) then
+!!$       ! first order approx to II derivative
+!!$       qddot(step_num,:) &
+!!$            &= alpha(1, 1)*qdot(step_num,:)/dt &
+!!$            &+ alpha(1, 2)*qdot(step_num-1,:)/dt
+!!$    else
+!!$       ! second order approx to II derivative
+!!$       qddot(step_num,:) &
+!!$            &= alpha(1, 1)*qdot(step_num,:)/dt &
+!!$            &+ alpha(1, 2)*qdot(step_num-1,:)/dt &
+!!$            &+ alpha(1, 3)*qdot(step_num-2,:)/dt
+!!$    end if
 
     print*, dq,  q(step_num, :), qdot(step_num, :),qddot(step_num, :)
 
