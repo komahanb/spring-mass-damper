@@ -534,3 +534,13 @@ program test_newton_solve_class
 contains
 
 end program test_newton_solve_class
+
+!!$
+!!$    ! set the number of dimensions or variables
+!!$    nvars = nvarsin
+!!$    if (nvars .eq. 0) stop "Wrong dimension"
+!!$
+!!$    ! set the number of time steps
+!!$    nsteps = nstepsin
+!!$    if (nsteps .le. 0) stop "Wrong number of time steps"
+!!$

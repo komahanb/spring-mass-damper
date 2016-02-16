@@ -23,129 +23,151 @@ module system_class
   
   implicit none
   
-  !-------------------------------------------------------------------!
-  ! The system parameters 
-  !-------------------------------------------------------------------!
-  
-  real(dp) :: M = 1.0_dp
-  real(dp) :: C = 0.02_dp
-  real(dp) :: K = 5.0_dp
-  
-  !  real(dp), dimension(:)     , allocatable :: dq
-  
   type system_descriptor
 
-     integer  :: ndim
-     integer  :: step_num = 1
+     integer  :: nvars
      integer  :: num_time_steps
+     integer  :: current_time_step
 
-     real(dp) :: dt, dt2
-     real(dp) :: tstart
-     real(dp) :: tend
+     real(dp) :: start_time
+     real(dp) :: end_time
+     real(dp) :: current_time
+     real(dp) :: dt
 
      logical  :: unsteady = .false.
 
-  end type system_descriptor
+   contains
+     
+     ! type bound getters and setters
+     
+!!$     procedure :: get_num_vars, set_num_vars
+!!$     procedure :: get_num_time_steps, set_num_time_steps
+!!$     procedure :: get_current_time_step, set_current_time_step
+!!$     procedure :: get_current_time, set_current_time
+!!$     
+!!$     procedure :: get_step_size, set_step_size
+!!$     procedure :: get_start_time, set_start_time
+!!$     procedure :: get_end_time, set_end_time
+!!$     
+!!$     procedure :: set_unsteady, is_unsteady
 
+  end type system_descriptor
+  
   !-------------------------------------------------------------------!
   ! The state variables
   !-------------------------------------------------------------------!
-  type state_variables
-
-     type(system_descriptor) :: bean
+  type, extends(system_descriptor) :: state_variables
 
      real(dp), dimension(:,:), allocatable :: q
      real(dp), dimension(:,:), allocatable :: qdot
      real(dp), dimension(:,:), allocatable :: qddot
 
+   contains
+     
+     procedure :: initialize_state_variables
+     procedure :: finalize_state_variables
+     
   end type state_variables
 
-  type mesh_variables
+  !-------------------------------------------------------------------!
+  ! The mesh variables
+  !-------------------------------------------------------------------!
 
-     type(system_descriptor) :: bean
+  type, extends(state_variables) :: mesh_variables
 
-     ! any mesh based system
   end type mesh_variables
   
-  ! type that wraps all the variables
-  type blob 
-     type(system_descriptor) :: bean
-     type(state_variables)   :: state
-     type(mesh_variables)    :: mesh
-  end type blob
+  !-------------------------------------------------------------------!
+  ! Abstract type for residual vector and its interface
+  !-------------------------------------------------------------------!
+  
+  type, abstract :: residual_interface
 
-  type residual_vector
-     type(system_descriptor) :: bean
      real(dp), dimension(:,:), allocatable :: R 
-  end type residual_vector
 
-  type jacobian_matrix
-     type(system_descriptor) :: bean
+   contains
+
+     procedure(residual_interface), nopass, deferred :: residual
+
+  end type residual_interface
+
+  ! Interface for implementing the residual
+
+  abstract interface
+     subroutine residual(this)
+       import residual_interface
+       class(residual_interface) :: this
+     end subroutine residual
+  end interface
+
+  !-------------------------------------------------------------------!
+  ! Abstract type for jacobian matrix and its interface
+  !-------------------------------------------------------------------!
+
+  type, abstract :: jacobian_interface
+
      real(dp), dimension(:,:,:), allocatable :: dR
-  end type jacobian_matrix
 
+   contains
+
+     procedure(jacobian_interface), nopass, deferred :: jacobian
+     
+  end type jacobian_interface
+
+  ! Interface for implementing the jacobian
+  
+  abstract interface
+     subroutine jacobian(this)
+       import jacobian_interface
+       class(jacobian_interface) :: this
+     end subroutine jacobian
+  end interface
+  
 contains
+  
+  !===================================================================!
+  ! Initialization tasks for state variables in the simulation
+  !===================================================================!
+  
+  subroutine initialize_state_variables(this)
 
-  ! initialization tasks for the variables in simulation
-  subroutine initialize()
+    class(state_variables) :: this
 
-!!$    integer, intent(in) :: ndimin, nstepsin
-!!$
-!!$    write(*, *) "Initializing variables"
-!!$
-!!$    ! set the number of dimensions or variables
-!!$    ndim = ndimin
-!!$    if (ndim .eq. 0) stop "Wrong dimension"
-!!$
-!!$    ! set the number of time steps
-!!$    nsteps = nstepsin
-!!$    if (nsteps .le. 0) stop "Wrong number of time steps"
-!!$
-!!$    ! allocate and initialize q
-!!$    if (allocated(q)) deallocate(q)
-!!$    allocate(q(nsteps, ndim))
-!!$    q = 0.0_dp
-!!$
-!!$    ! allocate and initialize qdot
-!!$    if (allocated(qdot)) deallocate(qdot)
-!!$    allocate(qdot(nsteps, ndim))
-!!$    qdot = 0.0_dp
-!!$
-!!$    ! allocate and initialize qddot
-!!$    if (allocated(qddot)) deallocate(qddot)
-!!$    allocate(qddot(nsteps, ndim))
-!!$    qddot = 0.0_dp
-!!$
-!!$    ! allocate and initialize R (residual)
-!!$    if (allocated(R)) deallocate(R)
-!!$    allocate(R(nsteps, ndim))
-!!$    R = 0.0_dp
-!!$
-!!$    ! allocate and initialize dq (update)
-!!$    if (allocated(dq)) deallocate(dq)
-!!$    allocate(dq(ndim))
-!!$    dq = 0.0_dp
-!!$
-!!$    ! allocate and initialize dR (jacobian)
-!!$    if (allocated(dR)) deallocate(dR)
-!!$    allocate(dR(nsteps, ndim, ndim))
-!!$    dR = 0.0_dp
-!!$
-  end subroutine initialize
-!!$
-!!$  ! finalization tasks
-  subroutine finalize()
-!!$
-!!$    write(*, *) "Finalize variables"
-!!$
-!!$    if (allocated(q))     deallocate(q)
-!!$    if (allocated(qdot))  deallocate(qdot)
-!!$    if (allocated(qddot)) deallocate(qddot)
+    write(*, *) "Initializing state variables"
+
+    ! allocate and initialize q
+    if (allocated(this % q)) deallocate(this % q)
+    allocate(this % q(this % num_time_steps, this % nvars))
+
+    ! allocate and initialize qdot
+    if (allocated(this % qdot)) deallocate(this % qdot)
+    allocate(this % qdot(this % num_time_steps, this % nvars))
+
+    ! allocate and initialize qddot
+    if (allocated(this % qddot)) deallocate(this % qddot)
+    allocate(this % qddot(this % num_time_steps, this % nvars))
+
+  end subroutine initialize_state_variables
+
+  !===================================================================!
+  ! Finalize the state variables and freeup memory
+  !===================================================================!
+
+  subroutine finalize_state_variables(this)
+
+    class(state_variables) :: this
+
+    write(*, *) "Finalize variables"
+
+    if (allocated(this % q))     deallocate(this % q)
+    if (allocated(this % qdot))  deallocate(this % qdot)
+    if (allocated(this % qddot)) deallocate(this % qddot)
+
 !!$    if (allocated(R))     deallocate(R)
 !!$    if (allocated(dR))    deallocate(dR)
 !!$    if (allocated(dq))    deallocate(dq)
 
-  end subroutine finalize
+  end subroutine finalize_state_variables
 
 end module system_class
 
@@ -162,43 +184,40 @@ module backward_difference
 
   private                                                               
   
-  public get_bdf_coeffs, update_states, residual, jacobian
+  public get_bdf_coeffs, update_states, get_residual, get_jacobian
 
   public system_descriptor
   
 contains
  
   ! implementation for residual
-  subroutine residual(this)
+  subroutine get_residual(this)
     
     type(system_descriptor) :: this
 
     real(dp) :: dt, dt2
-    integer  :: step_num
+    integer  :: current_time_step
 
-    step_num =  this % step_num
+    current_time_step =  this % current_time_step
     dt       = this % dt
-    dt2      = this % dt2
-
-    !R(step_num, :) = M*qddot(step_num,:) + C*qdot(step_num,:) + K*q(step_num,:)
+    !R(current_time_step, :) = M*qddot(current_time_step,:) + C*qdot(current_time_step,:) + K*q(current_time_step,:)
     
-  end subroutine residual
+  end subroutine get_residual
   
   ! implementation for the jacobian
-  subroutine jacobian(this)
+  subroutine get_jacobian(this)
     
     type(system_descriptor) :: this
 
     real(dp) :: dt, dt2
-    integer  :: step_num
+    integer  :: current_time_step
 
-    step_num =  this % step_num
+    current_time_step =  this % current_time_step
     dt       = this % dt
-    dt2      = this % dt2
-    
-    !dR(step_num, :, :) = K + C/dt + M/dt2
+   
+    !dR(current_time_step, :, :) = K + C/dt + M/dt2
 
-  end subroutine jacobian
+  end subroutine get_jacobian
 
   subroutine integrate(this)
 
@@ -224,38 +243,36 @@ contains
 
   end subroutine integrate
 
-  subroutine initialize1(this, ndim, tstart, tend, num_time_steps)
+  subroutine initialize1(this, nvars, start_time, end_time, num_time_steps)
 
     type(system_descriptor)  :: this
-    integer  :: ndim
-    real(dp) :: tstart, tend
+    integer  :: nvars
+    real(dp) :: start_time, end_time
     integer  :: num_time_steps
 
-    this % ndim = ndim
-    this % tstart = tstart
-    this % tend   = tend
+    this % nvars = nvars
+    this % start_time = start_time
+    this % end_time   = end_time
     this % num_time_steps = num_time_steps
-    this % dt = (tend - tstart)/dble(num_time_steps)
-    this % dt2 = this % dt * this % dt
+    this % dt = (end_time - start_time)/dble(num_time_steps)
 
-    if (this % tstart .ne. this %tend) this % unsteady = .true.
+    if (this % start_time .ne. this %end_time) this % unsteady = .true.
 
   end subroutine initialize1
 
-  subroutine initialize2(this, ndim, tstart, tend, dt)
+  subroutine initialize2(this, nvars, start_time, end_time, dt)
 
     type(system_descriptor)  :: this
-    integer  :: ndim
-    real(dp) :: tstart, tend, dt
+    integer  :: nvars
+    real(dp) :: start_time, end_time, dt
 
-    this % ndim = ndim
-    this % tstart = tstart
-    this % tend   = tend
+    this % nvars = nvars
+    this % start_time = start_time
+    this % end_time   = end_time
     this % dt = dt
-    this % dt2 = dt*dt
-    this % num_time_steps = int(dt*(tend-tstart))
+    this % num_time_steps = int(dt*(end_time-start_time))
 
-    if (this % tstart .ne. this %tend) this % unsteady = .true.
+    if (this % start_time .ne. this %end_time) this % unsteady = .true.
     
   end subroutine initialize2
 
@@ -298,30 +315,30 @@ contains
   ! Update the states at each newton iteration
   !-------------------------------------------------------------------!
   
-  subroutine update_states(this, step_num)
+  subroutine update_states(this, current_time_step)
 
     type(system_descriptor) :: this
     
     real(dp) :: alpha(20), beta(20), dt, dt2
 
-    integer  :: step_num
+    integer  :: current_time_step
     integer  :: order, k
 
-    step_num =  this % step_num
+    current_time_step =  this % current_time_step
     dt       = this % dt
-    dt2      = this % dt2
+
     !-----------------------------------------------------------------!
     ! Update the state
     !-----------------------------------------------------------------!
     
-    !q(step_num, :) = q(step_num, :) + dq(:)
+    !q(current_time_step, :) = q(current_time_step, :) + dq(:)
 
     !-----------------------------------------------------------------!
     ! FD approximation to I derivative
     !-----------------------------------------------------------------!
 
     ! Order of accuracy for first derivative
-    order = step_num - 1
+    order = current_time_step - 1
     if (order .gt. 3) order = 3
 
     ! Get the BDF coefficients
@@ -337,7 +354,7 @@ contains
     !-----------------------------------------------------------------!
 
     ! Order of accuracy for second derivative
-    if (step_num .le. 3) then
+    if (current_time_step .le. 3) then
        order = 1
     else
        order = 2
@@ -351,7 +368,7 @@ contains
       ! qddot(k,:) = qddot(k,:) + beta(k)*q(k,:)/dt2
     end do
 
-    !print*, dq,  q(step_num, :), qdot(step_num, :),qddot(step_num, :)
+    !print*, dq,  q(current_time_step, :), qdot(current_time_step, :),qddot(current_time_step, :)
 
   end subroutine update_states
 
@@ -360,3 +377,29 @@ end module backward_difference
 program test
   print*, "Hello world!!!"
 end program test
+
+!!$
+!!$    ! allocate and initialize qdot
+!!$    if (allocated(qdot)) deallocate(qdot)
+!!$    allocate(qdot(nsteps, nvars))
+!!$    qdot = 0.0_dp
+!!$
+!!$    ! allocate and initialize qddot
+!!$    if (allocated(qddot)) deallocate(qddot)
+!!$    allocate(qddot(nsteps, nvars))
+!!$    qddot = 0.0_dp
+!!$
+!!$    ! allocate and initialize R (residual)
+!!$    if (allocated(R)) deallocate(R)
+!!$    allocate(R(nsteps, nvars))
+!!$    R = 0.0_dp
+!!$
+!!$    ! allocate and initialize dq (update)
+!!$    if (allocated(dq)) deallocate(dq)
+!!$    allocate(dq(nvars))
+!!$    dq = 0.0_dp
+!!$
+!!$    ! allocate and initialize dR (jacobian)
+!!$    if (allocated(dR)) deallocate(dR)
+!!$    allocate(dR(nsteps, nvars, nvars))
+!!$    dR = 0.0_dp
