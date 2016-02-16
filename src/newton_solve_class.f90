@@ -87,13 +87,13 @@ module system_class
      
    contains
 
-     procedure(get_residual_interface), nopass, deferred :: get_residual
+     procedure(get_residual_interface), deferred :: get_residual
 
   end type abstract_residual
 
   ! Interface for implementing the residual
 
-  abstract interface
+   interface
 
      subroutine get_residual_interface(this)
 
@@ -115,7 +115,7 @@ module system_class
 
    contains
 
-     procedure(get_jacobian_interface), nopass, deferred :: get_jacobian
+     procedure(get_jacobian_interface), deferred :: get_jacobian
      
   end type abstract_jacobian
 
@@ -177,28 +177,61 @@ contains
 
 end module system_class
 
-!!$
-!!$module residual_class
-!!$  
-!!$  use system_class
-!!$
-!!$  type, extends(abstract_residual) :: residual
-!!$  
-!!$   contains
-!!$
-!!$     procedure :: get_residual => get_residual
-!!$     
-!!$  end type residual
-!!$
-!!$contains
-!!$  
-!!$  subroutine get_residual()
-!!$
-!!$  end subroutine get_residual
-!!$
-!!$! implement the residual here
-!!$  
-!!$end module residual_class
+!=====================================================================!
+! The user should provide implementation for the residual subroutine 
+!=====================================================================!
+
+module residual_class
+
+  use system_class
+
+  type, extends(abstract_residual) :: residual
+
+contains
+
+  procedure :: get_residual => user_residual
+
+end type residual
+
+contains
+
+subroutine user_residual(this)
+
+ class(residual) :: this
+
+ stop"please impl residual"
+
+end subroutine user_residual
+
+end module residual_class
+
+!=====================================================================!
+! The user should provide implementation for the jacobian subroutine 
+!=====================================================================!
+
+module jacobian_class
+
+  use system_class
+  
+  type, extends(abstract_jacobian) :: jacobian_matrix
+
+   contains
+
+     procedure :: get_jacobian => user_jacobian
+
+  end type jacobian_matrix
+
+contains
+
+subroutine user_jacobian(this)
+
+ class(jacobian_matrix) :: this
+
+ stop"please impl jacobian"
+
+end subroutine user_jacobian
+
+end module jacobian_class
 
 !=====================================================================!
 ! Module that wraps the backward difference integration logic
