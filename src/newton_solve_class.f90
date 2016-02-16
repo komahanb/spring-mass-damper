@@ -35,7 +35,7 @@ module system_class
      real(dp) :: dt
 
      logical  :: unsteady = .false.
-
+     
    contains
      
      ! type bound getters and setters
@@ -81,46 +81,56 @@ module system_class
   ! Abstract type for residual vector and its interface
   !-------------------------------------------------------------------!
   
-  type, abstract :: residual_interface
+  type, abstract :: abstract_residual
 
      real(dp), dimension(:,:), allocatable :: R 
-
+     
    contains
 
-     procedure(residual_interface), nopass, deferred :: residual
+     procedure(get_residual_interface), nopass, deferred :: get_residual
 
-  end type residual_interface
+  end type abstract_residual
 
   ! Interface for implementing the residual
 
   abstract interface
-     subroutine residual(this)
-       import residual_interface
-       class(residual_interface) :: this
-     end subroutine residual
-  end interface
 
+     subroutine get_residual_interface(this)
+
+       import abstract_residual
+
+       class(abstract_residual) :: this
+
+     end subroutine get_residual_interface
+
+  end interface
+ 
   !-------------------------------------------------------------------!
   ! Abstract type for jacobian matrix and its interface
   !-------------------------------------------------------------------!
 
-  type, abstract :: jacobian_interface
+  type, abstract :: abstract_jacobian
 
      real(dp), dimension(:,:,:), allocatable :: dR
 
    contains
 
-     procedure(jacobian_interface), nopass, deferred :: jacobian
+     procedure(get_jacobian_interface), nopass, deferred :: get_jacobian
      
-  end type jacobian_interface
+  end type abstract_jacobian
 
   ! Interface for implementing the jacobian
-  
+
   abstract interface
-     subroutine jacobian(this)
-       import jacobian_interface
-       class(jacobian_interface) :: this
-     end subroutine jacobian
+
+     subroutine get_jacobian_interface(this)
+
+       import abstract_jacobian
+
+       class(abstract_jacobian) :: this
+       
+     end subroutine get_jacobian_interface
+
   end interface
   
 contains
@@ -148,11 +158,11 @@ contains
     allocate(this % qddot(this % num_time_steps, this % nvars))
 
   end subroutine initialize_state_variables
-
+  
   !===================================================================!
   ! Finalize the state variables and freeup memory
   !===================================================================!
-
+  
   subroutine finalize_state_variables(this)
 
     class(state_variables) :: this
@@ -163,13 +173,32 @@ contains
     if (allocated(this % qdot))  deallocate(this % qdot)
     if (allocated(this % qddot)) deallocate(this % qddot)
 
-!!$    if (allocated(R))     deallocate(R)
-!!$    if (allocated(dR))    deallocate(dR)
-!!$    if (allocated(dq))    deallocate(dq)
-
   end subroutine finalize_state_variables
 
 end module system_class
+
+!!$
+!!$module residual_class
+!!$  
+!!$  use system_class
+!!$
+!!$  type, extends(abstract_residual) :: residual
+!!$  
+!!$   contains
+!!$
+!!$     procedure :: get_residual => get_residual
+!!$     
+!!$  end type residual
+!!$
+!!$contains
+!!$  
+!!$  subroutine get_residual()
+!!$
+!!$  end subroutine get_residual
+!!$
+!!$! implement the residual here
+!!$  
+!!$end module residual_class
 
 !=====================================================================!
 ! Module that wraps the backward difference integration logic
@@ -178,47 +207,18 @@ end module system_class
 module backward_difference
 
   use precision
-  use system_class
+  use system_class !, only: system_descriptor, get_residual, get_jacobian
 
   implicit none
 
   private                                                               
   
-  public get_bdf_coeffs, update_states, get_residual, get_jacobian
+  public get_bdf_coeffs, update_states
 
   public system_descriptor
   
 contains
  
-  ! implementation for residual
-  subroutine get_residual(this)
-    
-    type(system_descriptor) :: this
-
-    real(dp) :: dt, dt2
-    integer  :: current_time_step
-
-    current_time_step =  this % current_time_step
-    dt       = this % dt
-    !R(current_time_step, :) = M*qddot(current_time_step,:) + C*qdot(current_time_step,:) + K*q(current_time_step,:)
-    
-  end subroutine get_residual
-  
-  ! implementation for the jacobian
-  subroutine get_jacobian(this)
-    
-    type(system_descriptor) :: this
-
-    real(dp) :: dt, dt2
-    integer  :: current_time_step
-
-    current_time_step =  this % current_time_step
-    dt       = this % dt
-   
-    !dR(current_time_step, :, :) = K + C/dt + M/dt2
-
-  end subroutine get_jacobian
-
   subroutine integrate(this)
 
     type(system_descriptor) :: this
@@ -375,7 +375,42 @@ contains
 end module backward_difference
 
 program test
-  print*, "Hello world!!!"
+
+  use system_class
+  
+!  class(system_class) :: mydata
+
+  contains
+!!$
+!!$    ! implementation for residual
+!!$    subroutine get_residual(this)
+!!$
+!!$      type(system_descriptor) :: this
+!!$
+!!$      real(dp) :: dt, dt2
+!!$      integer  :: current_time_step
+!!$
+!!$      current_time_step =  this % current_time_step
+!!$      dt       = this % dt
+!!$      !R(current_time_step, :) = M*qddot(current_time_step,:) + C*qdot(current_time_step,:) + K*q(current_time_step,:)
+!!$
+!!$    end subroutine get_residual
+
+!!$
+!!$    ! implementation for the jacobian
+!!$    subroutine get_jacobian(this)
+!!$
+!!$      type(system_descriptor) :: this
+!!$
+!!$      real(dp) :: dt, dt2
+!!$      integer  :: current_time_step
+!!$
+!!$      current_time_step =  this % current_time_step
+!!$      dt       = this % dt
+!!$
+!!$      !dR(current_time_step, :, :) = K + C/dt + M/dt2
+!!$
+!!$    end subroutine 
 end program test
 
 !!$
