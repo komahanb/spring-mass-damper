@@ -39,17 +39,19 @@ module system_class
    contains
      
      ! type bound getters and setters
+
+     procedure :: initialize_system_variables
      
-!!$     procedure :: get_num_vars, set_num_vars
-!!$     procedure :: get_num_time_steps, set_num_time_steps
-!!$     procedure :: get_current_time_step, set_current_time_step
-!!$     procedure :: get_current_time, set_current_time
-!!$     
-!!$     procedure :: get_step_size, set_step_size
-!!$     procedure :: get_start_time, set_start_time
-!!$     procedure :: get_end_time, set_end_time
-!!$     
-!!$     procedure :: set_unsteady, is_unsteady
+     procedure :: get_num_vars, set_num_vars
+     procedure :: get_num_time_steps, set_num_time_steps
+     procedure :: get_current_time_step, set_current_time_step
+     procedure :: get_current_time, set_current_time
+     
+     procedure :: get_step_size, set_step_size
+     procedure :: get_start_time, set_start_time
+     procedure :: get_end_time, set_end_time
+     
+     procedure :: set_unsteady, is_unsteady
 
   end type system_descriptor
   
@@ -66,14 +68,20 @@ module system_class
      
      procedure :: initialize_state_variables
      procedure :: finalize_state_variables
+
+!    procedure :: set_initial_condition
      
   end type state_variables
-
+  
   !-------------------------------------------------------------------!
   ! The mesh variables
   !-------------------------------------------------------------------!
-
+  
   type, extends(state_variables) :: mesh_variables
+
+   contains
+
+     procedure :: initialize_mesh_variables
 
   end type mesh_variables
   
@@ -132,8 +140,254 @@ module system_class
      end subroutine get_jacobian_interface
 
   end interface
+
+  !-------------------------------------------------------------------!
+
+  !-------------------------------------------------------------------!
+
+  type(system_descriptor) :: system
+  type(state_variables)   :: state
+  type(mesh_variables)    :: mesh
   
 contains
+
+  !===================================================================!
+  ! Set the number of variables
+  !===================================================================!  
+
+  subroutine set_num_vars(this, nvars)
+
+    class(system_descriptor) :: this
+    integer :: nvars
+
+    this % nvars = nvars
+    
+  end subroutine set_num_vars
+
+  !===================================================================!
+  ! Set the number of time steps
+  !===================================================================!  
+
+  subroutine set_num_time_steps(this, nsteps)
+
+    class(system_descriptor) :: this
+    integer :: nsteps
+
+    this % num_time_steps = nsteps
+    
+  end subroutine set_num_time_steps  
+
+  !===================================================================!
+  ! Set the set current time step number
+  !===================================================================!  
+  
+  subroutine set_current_time_step(this, step_num)
+
+    class(system_descriptor) :: this
+    integer :: step_num
+
+    this % current_time_step = step_num
+
+  end subroutine set_current_time_step
+
+  !===================================================================!
+  ! Set the set current time
+  !===================================================================!  
+  
+  subroutine set_current_time(this, time)
+
+    class(system_descriptor) :: this
+    real(dp) :: time
+
+    this % current_time = time
+    
+  end subroutine set_current_time
+  
+  !===================================================================!
+  ! Set the step size
+  !===================================================================!  
+  
+  subroutine set_step_size(this, dt)
+    
+    class(system_descriptor) :: this
+    real(dp) :: dt
+
+    this % dt = dt
+    
+  end subroutine set_step_size
+
+  !===================================================================!
+  ! Set the start time
+  !===================================================================!  
+  
+  subroutine set_start_time(this, tstart)
+    
+    class(system_descriptor) :: this
+    real(dp) :: tstart
+
+    this % start_time = tstart
+    
+  end subroutine set_start_time
+  
+  !===================================================================!
+  ! Set the end time
+  !===================================================================!  
+  
+  subroutine set_end_time(this, tend)
+
+    class(system_descriptor) :: this
+    real(dp) :: tend
+
+    this % end_time = tend
+
+  end subroutine set_end_time
+  
+  !===================================================================!
+  ! Is this an unsteady simulation
+  !===================================================================!  
+  
+  subroutine set_unsteady(this, unsteady)
+
+    class(system_descriptor) :: this
+    logical :: unsteady
+
+    this % unsteady = unsteady
+
+  end subroutine set_unsteady
+
+  !===================================================================!
+  ! Get the number of variables
+  !===================================================================!  
+  
+  integer function get_num_vars(this)
+    
+    class(system_descriptor) :: this
+
+    get_num_vars = this % nvars
+    
+  end function get_num_vars
+  
+  !===================================================================!
+  ! Get the number of time steps
+  !===================================================================!  
+  
+  integer function get_num_time_steps(this)
+    
+    class(system_descriptor) :: this
+    
+    get_num_time_steps = this % num_time_steps
+    
+  end function get_num_time_steps
+
+  !===================================================================!
+  ! Get the current time step
+  !===================================================================!  
+  
+  integer function get_current_time_step(this)
+    
+    class(system_descriptor) :: this
+    
+    get_current_time_step  = this % current_time_step
+
+  end function get_current_time_step
+
+  !===================================================================!
+  ! Get the current time
+  !===================================================================!  
+  
+  real(dp) function get_current_time(this)
+    
+    class(system_descriptor) :: this
+    
+    get_current_time = this % current_time
+
+  end function get_current_time
+  
+  !===================================================================!
+  ! Get the step size
+  !===================================================================!  
+  
+  real(dp) function get_step_size(this)
+
+    class(system_descriptor) :: this
+
+    get_step_size = this % dt
+    
+  end function get_step_size
+
+  !===================================================================!
+  ! Get the start time
+  !===================================================================!  
+  
+  real(dp) function get_start_time(this)
+
+    class(system_descriptor) :: this
+
+    get_start_time = this % start_time
+
+  end function get_start_time
+  
+  !===================================================================!
+  ! Get the end time
+  !===================================================================!  
+  
+  real(dp) function get_end_time(this)
+
+    class(system_descriptor) :: this
+    
+    get_end_time = this % end_time
+    
+  end function get_end_time
+  
+  !===================================================================!
+  ! Is this an unsteady simulation
+  !===================================================================!  
+  
+  logical function is_unsteady(this)
+
+    class(system_descriptor) :: this
+
+    is_unsteady = this % unsteady
+
+  end function is_unsteady
+
+  !===================================================================!
+  ! Initialization tasks for system descriptor variables
+  !===================================================================!
+  
+  subroutine initialize_system_variables(this)
+
+    class(system_descriptor) :: this
+
+    call system % set_num_vars(10)
+    call system % set_num_time_steps(100)
+    call system % set_start_time(0.0_dp)
+    call system % set_end_time(1.0_dp)
+    call system % set_unsteady(.true.)
+
+  end subroutine initialize_system_variables
+  
+  !===================================================================!
+  ! Initialization tasks for mesh variables
+  !===================================================================!
+  
+  subroutine initialize_mesh_variables(this)
+
+    class(mesh_variables) :: this
+    
+  end subroutine initialize_mesh_variables
+  
+  !===================================================================!
+  ! Initialization tasks for ALL  variables in the simulation
+  !===================================================================!
+
+  subroutine initialize_simulation()
+
+    call system % initialize_system_variables()
+    call state  % initialize_state_variables()
+    call mesh   % initialize_mesh_variables()
+
+  end subroutine initialize_simulation
   
   !===================================================================!
   ! Initialization tasks for state variables in the simulation
@@ -240,7 +494,7 @@ end module jacobian_class
 module backward_difference
 
   use precision
-  use system_class !, only: system_descriptor, get_residual, get_jacobian
+  use system_class
 
   implicit none
 
@@ -248,31 +502,27 @@ module backward_difference
   
   public get_bdf_coeffs, update_states
 
-  public system_descriptor
-  
 contains
  
   subroutine integrate(this)
 
-    type(system_descriptor) :: this
-!    type(newton_solve) :: newton
-!!$
-!!$    integer :: nvars  = 1
-!!$    integer :: k
-!!$
-!!$    ! Set optional parameters
-!!$ !   call newton % set_num_vars(nvars)
-!!$ !   call newton % set_exit_on_failure(.true.)
-!!$
-!!$    ! set initial condition
-!!$    q(1, :) = 1.0_dp
-!!$
-!!$    ! march in time
-!!$    time: do k = 2, this % num_time_steps + 1
-!!$
-!!$       call newton % solve()
-!!$
-!!$    end do time
+    type(state_variables) :: this
+
+    integer :: k
+    
+    ! Set optional parameters
+    ! call newton % set_num_vars(nvars)
+    ! call newton % set_exit_on_failure(.true.)
+    
+    ! set initial condition
+    this % q(1, :) = 1.0_dp
+    
+    ! march in time
+    time: do k = 2, this % num_time_steps + 1
+       
+       !call newton % solve()
+       
+    end do time
 
   end subroutine integrate
 
