@@ -26,7 +26,7 @@ module system_class
   private
 
   public :: abstract_residual, abstract_jacobian
-  public :: system, state, mesh, initialize_simulation, set_initial_condition
+  public :: system, state, mesh, initialize_simulation, set_intial_state
   
   type system_descriptor
      
@@ -77,7 +77,7 @@ module system_class
 
    contains
 
-     procedure :: set_initial_condition
+     procedure :: set_intial_state
      procedure :: initialize_state_variables
      procedure :: finalize_state_variables
 
@@ -414,7 +414,7 @@ contains
   ! Set initial condition
   !-------------------------------------------------------------------!
   
-  subroutine set_initial_condition(this, qinit, qdotinit)
+  subroutine set_intial_state(this, qinit, qdotinit)
 
     class(state_variables) :: this
     real(dp), dimension(:) :: qinit, qdotinit
@@ -424,7 +424,7 @@ contains
     this % q(1,:) = qinit
     this % qdot(1,:) = qdotinit
     
-  end subroutine set_initial_condition
+  end subroutine set_intial_state
 
   !-------------------------------------------------------------------!
   ! Initialization tasks for state variables in the simulation
@@ -627,6 +627,7 @@ contains
 
     step_num = system % get_current_time_step()
 
+    ! Extrapolate using gradient and Hessian information
     if (step_num .gt. 1) then
        state % q(step_num,:) = state % q(step_num-1,:) &
             &+ state % qdot(step_num-1,:)*dt &
@@ -635,7 +636,6 @@ contains
     
   end subroutine extrapolate
 
-!!$
 !!$  subroutine integrate(this)
 !!$
 !!$    type(state_variables) :: this
@@ -1264,7 +1264,7 @@ program test
   qdotinit(1) = 0.0_dp
 
   call initialize_simulation()
-  call state % set_initial_condition(qinit, qdotinit)
+  call state % set_intial_state(qinit, qdotinit)
   call system % set_current_time_step(2)
   call newton % solve()
 
