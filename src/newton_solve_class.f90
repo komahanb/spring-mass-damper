@@ -30,6 +30,8 @@ module system_class
   
   type system_descriptor
      
+     private 
+
      integer  :: nvars = 1
      integer  :: num_time_steps  = 1
      integer  :: current_time_step = 1
@@ -565,8 +567,8 @@ contains
     integer  :: current_time_step
     integer  :: order, k
 
-    current_time_step = system % current_time_step
-    dt = system % dt
+    current_time_step = system % get_current_time_step()
+    dt = system % get_step_size()
     dt2 = dt * dt
 
     !-----------------------------------------------------------------!
