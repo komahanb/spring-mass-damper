@@ -1187,22 +1187,24 @@ contains
 
        this % iter_num = this % iter_num + 1
 
-       call res % get_residual()
+      call res % get_residual()
+      
+      !      print *, state % R(2,:)
 
-       print *, state % R(2,:)
-
-       call jac % get_jacobian()
-
-       print *, state % dR(2,:,:)
-
-       call this % linear_solve()
-
-       call update_states()
-
-       call this % check_stop()
-
+      call jac % get_jacobian()
+      
+      !     print *, state % dR(2,:,:)
+      
+      call this % linear_solve()
+      
+      call update_states()
+      
+      print*, state % q(2,:), state % qdot(2,:), state % qddot(2,:)
+      
+      call this % check_stop()
+      
        if (this % converged) exit newton
-
+       
     end do newton
 
   end subroutine work
