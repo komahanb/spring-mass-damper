@@ -20,16 +20,16 @@ end module precision
 module system_class
 
   use precision
-  
+
   implicit none
 
   private
 
   public :: abstract_residual, abstract_jacobian
-  public :: system, state, mesh, initialize_simulation, set_intial_state
-  
-  type system_descriptor
-     
+  public :: system, state, mesh, initialize_simulation, set_initial_state
+
+  type :: system_descriptor
+
      private 
 
      integer  :: nvars = 1
@@ -39,24 +39,24 @@ module system_class
      real(dp) :: start_time = 0.0_dp
      real(dp) :: end_time = 1.0_dp
      real(dp) :: current_time = 0.0_dp
-     real(dp) :: dt = 1.0e-3_dp
+     real(dp) :: dt = 1.0e-1_dp
 
      logical  :: unsteady = .false.
-     
+
    contains
-     
-      procedure :: initialize_system_variables
-      
-      procedure :: get_num_vars, set_num_vars
-      procedure :: get_num_time_steps, set_num_time_steps
-      procedure :: get_current_time_step, set_current_time_step
-      procedure :: get_current_time, set_current_time
 
-      procedure :: get_step_size, set_step_size
-      procedure :: get_start_time, set_start_time
-      procedure :: get_end_time, set_end_time
+     procedure :: initialize_system_variables
 
-      procedure :: set_unsteady, is_unsteady
+     procedure :: get_num_vars, set_num_vars
+     procedure :: get_num_time_steps, set_num_time_steps
+     procedure :: get_current_time_step, set_current_time_step
+     procedure :: get_current_time, set_current_time
+
+     procedure :: get_step_size, set_step_size
+     procedure :: get_start_time, set_start_time
+     procedure :: get_end_time, set_end_time
+
+     procedure :: set_unsteady, is_unsteady
 
   end type system_descriptor
 
@@ -77,32 +77,34 @@ module system_class
 
    contains
 
-     procedure :: set_intial_state
+     procedure :: set_initial_state
+     procedure :: set_init_q, set_init_qdot
+
      procedure :: initialize_state_variables
      procedure :: finalize_state_variables
 
   end type state_variables
-  
+
   !-------------------------------------------------------------------!
   ! The mesh variables
   !-------------------------------------------------------------------!
-  
+
   type :: mesh_variables
 
    contains
-     
+
      procedure :: initialize_mesh_variables
      procedure :: finalize_mesh_variables
 
   end type mesh_variables
-  
+
   !-------------------------------------------------------------------!
   ! Abstract type for residual vector and its interface
   !-------------------------------------------------------------------!
-  
+
   type, abstract :: abstract_residual
 
-     
+
    contains
 
      procedure(get_residual_interface), deferred :: get_residual
@@ -134,7 +136,7 @@ module system_class
    contains
 
      procedure(get_jacobian_interface), deferred :: get_jacobian
-     
+
   end type abstract_jacobian
 
   !-------------------------------------------------------------------!
@@ -160,13 +162,39 @@ module system_class
   type(system_descriptor) :: system
   type(state_variables)   :: state
   type(mesh_variables)    :: mesh
-  
+
 contains
+
+  !-------------------------------------------------------------------!
+  ! Set the initial value of x (starting point)
+  !-------------------------------------------------------------------!
+
+  subroutine set_init_q(this, init_q)
+
+    class(state_variables) :: this
+    real(dp), dimension(:) :: init_q
+
+    this % q(1,:) = init_q
+
+  end subroutine set_init_q
+
+  !-------------------------------------------------------------------!
+  ! Set the initial value of x (starting point)
+  !-------------------------------------------------------------------!
+
+  subroutine set_init_qdot(this, init_qdot)
+
+    class(state_variables) :: this
+    real(dp), dimension(:) :: init_qdot
+
+    this % qdot(1,:) = init_qdot
+
+  end subroutine set_init_qdot
 
   !-------------------------------------------------------------------!
   ! Initialization tasks for ALL  variables in the simulation
   !-------------------------------------------------------------------!
-  
+
   subroutine initialize_simulation()
 
     call system % initialize_system_variables()
@@ -185,7 +213,7 @@ contains
     integer :: nvars
 
     this % nvars = nvars
-    
+
   end subroutine set_num_vars
 
   !-------------------------------------------------------------------!
@@ -198,13 +226,13 @@ contains
     integer :: nsteps
 
     this % num_time_steps = nsteps
-    
-  end subroutine set_num_time_steps  
+
+  end subroutine set_num_time_steps
 
   !-------------------------------------------------------------------!
   ! Set the set current time step number
   !-------------------------------------------------------------------!  
-  
+
   subroutine set_current_time_step(this, step_num)
 
     class(system_descriptor) :: this
@@ -217,46 +245,46 @@ contains
   !-------------------------------------------------------------------!
   ! Set the set current time
   !-------------------------------------------------------------------!  
-  
+
   subroutine set_current_time(this, time)
 
     class(system_descriptor) :: this
     real(dp) :: time
 
     this % current_time = time
-    
+
   end subroutine set_current_time
-  
+
   !-------------------------------------------------------------------!
   ! Set the step size
   !-------------------------------------------------------------------!  
-  
+
   subroutine set_step_size(this, dt)
-    
+
     class(system_descriptor) :: this
     real(dp) :: dt
 
     this % dt = dt
-    
+
   end subroutine set_step_size
 
   !-------------------------------------------------------------------!
   ! Set the start time
   !-------------------------------------------------------------------!  
-  
+
   subroutine set_start_time(this, tstart)
-    
+
     class(system_descriptor) :: this
     real(dp) :: tstart
 
     this % start_time = tstart
-    
+
   end subroutine set_start_time
-  
+
   !-------------------------------------------------------------------!
   ! Set the end time
   !-------------------------------------------------------------------!  
-  
+
   subroutine set_end_time(this, tend)
 
     class(system_descriptor) :: this
@@ -265,11 +293,11 @@ contains
     this % end_time = tend
 
   end subroutine set_end_time
-  
+
   !-------------------------------------------------------------------!
   ! Is this an unsteady simulation
   !-------------------------------------------------------------------!  
-  
+
   subroutine set_unsteady(this, unsteady)
 
     class(system_descriptor) :: this
@@ -282,35 +310,35 @@ contains
   !-------------------------------------------------------------------!
   ! Get the number of variables
   !-------------------------------------------------------------------!  
-  
+
   integer pure function get_num_vars(this)
-    
+
     class(system_descriptor), intent(in) :: this
 
     get_num_vars = this % nvars
-    
+
   end function get_num_vars
-  
+
   !-------------------------------------------------------------------!
   ! Get the number of time steps
   !-------------------------------------------------------------------!  
-  
+
   integer function get_num_time_steps(this)
-    
+
     class(system_descriptor) :: this
-    
+
     get_num_time_steps = this % num_time_steps
-    
+
   end function get_num_time_steps
 
   !-------------------------------------------------------------------!
   ! Get the current time step
   !-------------------------------------------------------------------!  
-  
+
   integer function get_current_time_step(this)
-    
+
     class(system_descriptor) :: this
-    
+
     get_current_time_step  = this % current_time_step
 
   end function get_current_time_step
@@ -318,31 +346,31 @@ contains
   !-------------------------------------------------------------------!
   ! Get the current time
   !-------------------------------------------------------------------!  
-  
+
   real(dp) function get_current_time(this)
-    
+
     class(system_descriptor) :: this
-    
+
     get_current_time = this % current_time
 
   end function get_current_time
-  
+
   !-------------------------------------------------------------------!
   ! Get the step size
   !-------------------------------------------------------------------!  
-  
+
   real(dp) function get_step_size(this)
 
     class(system_descriptor) :: this
 
     get_step_size = this % dt
-    
+
   end function get_step_size
 
   !-------------------------------------------------------------------!
   ! Get the start time
   !-------------------------------------------------------------------!  
-  
+
   real(dp) function get_start_time(this)
 
     class(system_descriptor) :: this
@@ -350,23 +378,23 @@ contains
     get_start_time = this % start_time
 
   end function get_start_time
-  
+
   !-------------------------------------------------------------------!
   ! Get the end time
   !-------------------------------------------------------------------!  
-  
+
   real(dp) function get_end_time(this)
 
     class(system_descriptor) :: this
-    
+
     get_end_time = this % end_time
-    
+
   end function get_end_time
-  
+
   !-------------------------------------------------------------------!
   ! Is this an unsteady simulation
   !-------------------------------------------------------------------!  
-  
+
   logical function is_unsteady(this)
 
     class(system_descriptor) :: this
@@ -374,68 +402,63 @@ contains
     is_unsteady = this % unsteady
 
   end function is_unsteady
-  
+
   !-------------------------------------------------------------------!
   ! Initialization tasks for system descriptor variables
   !-------------------------------------------------------------------!
-  
+
   subroutine initialize_system_variables(this)
-    
+
     class(system_descriptor) :: this
     integer :: num_steps
 
     ! Use namelist system to read these params
+
     call system % set_num_vars(1)
     call system % set_start_time(0.0_dp)
-    call system % set_end_time(1.0_dp)
+    call system % set_end_time(10.0_dp)
     call system % set_step_size(1.0e-3_dp)
     call system % set_unsteady(.true.)
-   
+
     num_steps = int((system % get_end_time()-system%get_start_time()) &
-         &/system % get_step_size())+1
-    
+         &/system % get_step_size()) + 1
+
     call system % set_num_time_steps(num_steps)
-    
+
   end subroutine initialize_system_variables
-  
+
   !-------------------------------------------------------------------!
   ! Initialization tasks for mesh variables
   !-------------------------------------------------------------------!
-  
+
   subroutine initialize_mesh_variables(this)
 
     class(mesh_variables) :: this
 
-    write(*, *) "Initialize mesh variables"
-    
   end subroutine initialize_mesh_variables
-  
+
   !-------------------------------------------------------------------!
   ! Set initial condition
   !-------------------------------------------------------------------!
-  
-  subroutine set_intial_state(this, qinit, qdotinit)
+
+  subroutine set_initial_state(this, qinit, qdotinit)
 
     class(state_variables) :: this
     real(dp), dimension(:) :: qinit, qdotinit
 
-    write(*,*) "Setting initial condition"
+    call this % set_init_q(qinit)
+    call this % set_init_qdot(qdotinit)
 
-    this % q(1,:) = qinit
-    this % qdot(1,:) = qdotinit
-    
-  end subroutine set_intial_state
-
+  end subroutine set_initial_state
+  
   !-------------------------------------------------------------------!
   ! Initialization tasks for state variables in the simulation
   !-------------------------------------------------------------------!
-  
+
   subroutine initialize_state_variables(this)
 
     class(state_variables) :: this
 
-    write(*, *) "Initializing state variables"
-    
     !-----------------------------------------------------------------!
     ! allocate and initialize q
     !-----------------------------------------------------------------!
@@ -464,20 +487,26 @@ contains
     allocate(this % dq(system % nvars))
     this % dq = 0.0_dp
 
+    !-----------------------------------------------------------------!
+    ! allocate and initialize R
+    !-----------------------------------------------------------------!
     if (allocated(this % R)) deallocate(this % R)
     allocate(this % R(system % num_time_steps, system % nvars))
     this % R = 0.0_dp
 
+    !-----------------------------------------------------------------!
+    ! allocate and initialize dR
+    !-----------------------------------------------------------------!
     if (allocated(this % dR)) deallocate(this % dR)
     allocate(this % dR(system % num_time_steps, system % nvars, system % nvars))
     this % dR = 0.0_dp
 
   end subroutine initialize_state_variables
-  
+
   !-------------------------------------------------------------------!
   ! Finalize the state variables and freeup memory
   !-------------------------------------------------------------------!
-  
+
   subroutine finalize_state_variables(this)
 
     class(state_variables) :: this
@@ -493,7 +522,7 @@ contains
   !-------------------------------------------------------------------!
   ! Finalize the mesh variables and freeup memory
   !-------------------------------------------------------------------!
-  
+
   subroutine finalize_mesh_variables(this)
 
     class(mesh_variables) :: this
@@ -517,7 +546,13 @@ module backward_difference
 
   private                                                               
 
-  public get_bdf_coeffs, update_states, extrapolate
+  public aa, bb
+  public get_bdf_coeffs, update_states, extrapolate, approximate_derivatives
+
+  ! Coefficients for linearising the residual
+
+  real(dp) :: alpha(6+1), beta(2*6+1)
+  real(dp) :: aa = 0.0_dp, bb = 0.0_dp
 
 contains
 
@@ -546,72 +581,105 @@ contains
 
     ! number of data points needed for desired derivative degree and
     ! order of accuracy
-    n = m + d
     call differ_backward ( h, d, m, ctmp, x )
 
+    n = m + d
+
     ! flip the array
-    forall(k = 1:n) c(k) = ctmp(n-k+1)
+    forall(k=1:n) c(k) = ctmp(n-k+1)
+
+    if(d .eq. 1) aa = c(1)
+    if(d .eq. 2) bb = c(1)
 
   end function get_bdf_coeffs
 
   !-------------------------------------------------------------------!
-  ! Update the states at each newton iteration
+  ! Updates the state vector and its derivatives at the k-th time step
   !-------------------------------------------------------------------!
 
   subroutine update_states()
 
+    integer :: k
+    real(dp) ::dt, dt2
+
+    k = system % get_current_time_step()
+
+    dt = system % get_step_size()
+    dt2 = dt * dt
+
+    state % q(k,:) = state % q(k,:) + state % dq(:) 
+    state % qdot(k, :) = state % qdot(k,:) + aa*state % dq(:)/dt
+    state % qddot(k, :) = state % qddot(k,:) + bb*state % dq(:)/dt2  
+
+  end subroutine update_states
+
+  !-------------------------------------------------------------------!
+  ! Approximate first and second derivative for the next iteration
+  !-------------------------------------------------------------------!
+
+  subroutine approximate_derivatives()
+
     implicit none
 
-    real(dp) :: alpha(20), beta(20), dt, dt2
+    real(dp) :: dt, dt2
+    integer  :: forder, sorder, k, i
 
-    integer  :: current_time_step
-    integer  :: order, k
+    k = system % get_current_time_step()
 
-    current_time_step = system % get_current_time_step()
     dt = system % get_step_size()
     dt2 = dt * dt
 
     !-----------------------------------------------------------------!
-    ! Update the state
+    ! Approximate state at the current step (copy the previous state)
     !-----------------------------------------------------------------!
 
-    state % q(current_time_step, :) = state % q(current_time_step, :) &
-         &+ state % dq(:)
+    ! state % q(k, :) = state % q(k-1, :)
 
     !-----------------------------------------------------------------!
     ! FD approximation to I derivative
     !-----------------------------------------------------------------!
 
-    ! Order of accuracy for first derivative
-    order = current_time_step - 1
-    if (order .gt. 3) order = 3
+    ! Determine the order of accuracy for first derivative
+    forder = k - 1
+    if (forder .gt. 6) forder = 6
 
-    ! Get the BDF coefficients
-    alpha(1:order+1) = get_bdf_coeffs(1, order)
+    ! Get the BDF coefficients for first derivative
+    alpha(1:forder+1) = get_bdf_coeffs(1, forder)
 
-    ! Approximate qdot
-    forall(k = 1:order+1) state % qdot(k,:) = state % qdot(k,:) &
-         &+ alpha(k)*state % q(k,:)/dt
+    ! Apply the BDF formula
+    do i = 0, forder ! m+1 points
+       state % qdot(k,:) = state % qdot(k,:) + &
+            & alpha(i+1) * state % q(k-i,:)/dt 
+    end do
 
     !-----------------------------------------------------------------!
     ! FD approximation to II derivative
     !-----------------------------------------------------------------!
 
     ! Order of accuracy for second derivative
-    if (current_time_step .le. 3) then
-       order = 1
+    sorder = (k-1)/2
+    if (sorder .gt. 6) sorder = 6
+
+    if (sorder .gt. 0) then
+
+       ! Get the BDF coefficients for second derivative   
+       beta(1:2*sorder+1) = get_bdf_coeffs(2, sorder)
+
+       ! Apply the BDF formula for second derivative
+       do i = 0, 2*sorder ! 2m+1 points
+          state % qddot(k,:) = state % qddot(k,:) + &
+               & beta(i+1) * state % q(k-i,:)/dt2
+       end do
+
     else
-       order = 2
+
+       !  we dont have enought points yet
+       bb = 1.0_dp
+       state % qddot(k,:) = (state%qdot(k-1,:) - state%qdot(k,:))/dt
+
     end if
 
-    ! Get the BDF coefficients
-    beta(1:order+2) = get_bdf_coeffs(2, order)
-
-    ! Approximate qddot
-    forall(k = 1:order+1) state % qddot(k,:) = state % qddot(k,:) &
-         &+ beta(k)*state % q(k,:)/dt2
-
-  end subroutine update_states
+  end subroutine approximate_derivatives
 
   !-------------------------------------------------------------------!
   ! Extrapolate to next time step
@@ -619,44 +687,22 @@ contains
 
   subroutine extrapolate()
 
-    integer  :: step_num
+    integer  :: k
     real(dp) :: dt, dt2
 
-    dt = system % get_step_size()
-    dt2 = dt * dt
+    k = system % get_current_time_step()
 
-    step_num = system % get_current_time_step()
+    dt = system % get_step_size()
+    dt2 = dt*dt
 
     ! Extrapolate using gradient and Hessian information
-    if (step_num .gt. 1) then
-       state % q(step_num,:) = state % q(step_num-1,:) &
-            &+ state % qdot(step_num-1,:)*dt &
-            &+ state % qddot(step_num-1,:)*dt2/2.0_dp
+    if (k .gt. 1) then
+       state % q(k,:) = state % q(k-1,:) &
+            &+ state % qdot(k-1,:)*dt &
+            &+ state % qddot(k-1,:)*dt2/2.0_dp
     end if
-    
-  end subroutine extrapolate
 
-!!$  subroutine integrate(this)
-!!$
-!!$    type(state_variables) :: this
-!!$
-!!$    integer :: k
-!!$
-!!$    ! Set optional parameters
-!!$    ! call newton % set_num_vars(nvars)
-!!$    ! call newton % set_exit_on_failure(.true.)
-!!$
-!!$    ! set initial condition
-!!$    this % q(1, :) = 1.0_dp
-!!$
-!!$    ! march in time
-!!$    time: do k = 2, this % num_time_steps + 1
-!!$
-!!$       !call newton % solve()
-!!$
-!!$    end do time
-!!$
-!!$  end subroutine integrate
+  end subroutine extrapolate
 
 end module backward_difference
 
@@ -674,7 +720,7 @@ module residual_class
   type, extends(abstract_residual) :: residual
 
      real(dp) :: M = 1.0_dp
-     real(dp) :: C = 0.1_dp
+     real(dp) :: C = 0.02_dp
      real(dp) :: K = 5.0_dp
 
    contains
@@ -686,16 +732,15 @@ module residual_class
 contains
   
   subroutine user_residual(this)
-    
+
     class(residual) :: this
-    integer :: tstep
+    integer :: n
 
-    tstep = system % get_current_time_step()
+    n = system % get_current_time_step()
 
-    state % R(tstep,:) = this % M * state%qddot(tstep,:) &
-         &+ this % C * state % qdot(tstep,:) &
-         &+ this % K * state % q(tstep,:)
-
+    state % R(n,:) = this % M * state % qddot(n,:) &
+         &+ this % C * state % qdot(n,:) &
+         &+ this % K * state % q(n,:)
 
   end subroutine user_residual
 
@@ -706,16 +751,17 @@ end module residual_class
 !=====================================================================!
 
 module jacobian_class
-
+  
   use precision
   use system_class
+  use backward_difference, only: aa, bb
 
   implicit none
-  
+
   type, extends(abstract_jacobian) :: jacobian_matrix
 
      real(dp) :: M = 1.0_dp
-     real(dp) :: C = 0.1_dp
+     real(dp) :: C = 0.02_dp
      real(dp) :: K = 5.0_dp
 
    contains
@@ -725,22 +771,20 @@ module jacobian_class
   end type jacobian_matrix
 
 contains
-
+  
   subroutine user_jacobian(this)
-
-    !use backward_difference
 
     class(jacobian_matrix) :: this
 
     real(dp) :: dt, dt2
-    integer :: tstep
+    integer :: n
 
-    tstep = system % get_current_time_step()
-   
+    n = system % get_current_time_step()
+
     dt = system % get_step_size()
     dt2 = dt * dt
 
-    state % dR(tstep,:,:) = this % K + this % C/dt + this % M/dt2
+    state % dR(n,:,:) = this % K + this % C*aa/dt + this % M*bb/dt2
 
   end subroutine user_jacobian
 
@@ -761,7 +805,7 @@ module newton_solve_bean_class
   private
 
   public :: newton_solve_bean
-  
+
   type newton_solve_bean
 
      !----------------------------------------------------------------!
@@ -770,7 +814,7 @@ module newton_solve_bean_class
 
      integer :: max_newton_iters = 50
      integer :: nvars = 1
-     integer :: iter_num = 0
+     integer :: iter_num = 1
 
      !----------------------------------------------------------------!
      ! Stopping criteria
@@ -781,8 +825,8 @@ module newton_solve_bean_class
      real(dp) :: atol_unrm = 1.0d-12
 
      ! relative tolerances
-     real(dp) :: rtol_rnrm = 1.0d-6
-     real(dp) :: rtol_unrm = 1.0d-6
+     real(dp) :: rtol_rnrm = 1.0d-12
+     real(dp) :: rtol_unrm = 1.0d-12
 
      ! actual norm values
      real(dp), dimension(:), allocatable :: rnrm, unrm
@@ -813,7 +857,7 @@ module newton_solve_bean_class
      procedure :: set_exit_on_failure
 
   end type newton_solve_bean
-  
+
 contains
 
   !-------------------------------------------------------------------!
@@ -1005,32 +1049,6 @@ contains
 
   end subroutine set_exit_on_failure
 
-  !-------------------------------------------------------------------!
-  ! Set the initial value of x (starting point)
-  !-------------------------------------------------------------------!
-
-!!$  subroutine set_init_x(this, init_q)
-!!$
-!!$    class(newton_solve_bean) :: this
-!!$    real(dp) :: init_q
-!!$
-!!$    this % init_q = init_q
-!!$
-!!$  end subroutine set_init_x
-!!$
-!!$  !-------------------------------------------------------------------!
-!!$  ! Set the initial value of x (starting point)
-!!$  !-------------------------------------------------------------------!
-!!$
-!!$  subroutine set_init_xdot(this, init_qdot)
-!!$
-!!$    class(newton_solve_bean) :: this
-!!$    real(dp) :: init_qdot
-!!$
-!!$    this % init_qdot = init_qdot
-!!$
-!!$  end subroutine set_init_xdot
-
 end module newton_solve_bean_class
 
 !=====================================================================!
@@ -1095,68 +1113,71 @@ contains
   !-------------------------------------------------------------------!
   ! Solve the linear system to find the newton update
   !-------------------------------------------------------------------!
-
+  
   subroutine linear_solve(this)
 
     class(newton_solve) :: this
 
     type(residual) :: res
     type(jacobian_matrix) :: jac
-   
-    real(dp):: rtmp, drtmp
-    integer :: step_num
 
-    step_num = system % get_current_time_step()
+    real(dp):: rtmp, drtmp
+    integer :: k
+
+    k = system % get_current_time_step()
 
     if (system % get_num_vars() .eq. 1) then
 
-       rtmp  = state % R(step_num, 1)
-       drtmp = state % dR(step_num, 1, 1)
-       
+       rtmp  = state % R(k, 1)
+       drtmp = state % dR(k, 1, 1)
+
        state % dq = -rtmp/drtmp
-       
+
     else
 
-       !   state % dq    = - res % R(step_num,:)
-       !  / jac % dR (step_num, :, :)
+       !   state % dq    = - res % R(k,:)
+       !  / jac % dR (k, :, :)
        stop"linear solve not implemented for ndim>1"
        !  lapack ()
 
     end if
 
   end subroutine linear_solve
-
+  
   !-------------------------------------------------------------------!
   ! Solve the linear system to find the newton update
   !-------------------------------------------------------------------!
-
+  
   subroutine check_stop(this)
 
     class(newton_solve) :: this
 
     type(residual) :: res
-    integer :: step_num
-    
-    step_num =  system % get_current_time_step()
+    integer :: k, n
 
-    this % rnrm (this % iter_num) = norm2(state % R(step_num,:))
-    this % unrm (this % iter_num) = norm2(state % dq)
-    
-    if ((this % rnrm (this % iter_num).le.this % get_atol_rnrm()) .or.&
-         & (this % unrm(this % iter_num).le.this % get_atol_unrm()))  &
+    k =  system % get_current_time_step()
+    n = this % iter_num
+
+    this % rnrm(n) = norm2(state % R(k,:))
+    this % unrm(n) = norm2(state % dq)
+
+    if ((this % rnrm(n).le.this % get_atol_rnrm()) .or.&
+         & (this % unrm(n).le.this % get_atol_unrm()))  &
          & this % converged = .true.
-    
+
   end subroutine check_stop
 
   !-------------------------------------------------------------------!
   ! Routine for initialization tasks
   !-------------------------------------------------------------------!
-  
+
   subroutine init(this)
 
     class(newton_solve) :: this
 
-    print *, "Initializing Newton Solve"
+    this % converged = .false.
+
+    this % iter_num = 1
 
     if (allocated(this % rnrm)) deallocate(this % rnrm)
     allocate(this % rnrm(this % get_max_newton_iters()))
@@ -1179,34 +1200,40 @@ contains
     type(jacobian_matrix) :: jac
     type(residual) :: res
 
-    integer :: n, step_num
+    integer :: n=0, k=0
 
-    print *, "Executing Newton solve"
+    k = system % get_current_time_step()
+
+    !    print *, "Executing Newton solve"
 
     call extrapolate()
 
+    call approximate_derivatives()
+
     newton: do n = 1, this % get_max_newton_iters()
+
+       call res % get_residual()
+
+       call jac % get_jacobian()
+
+       call this % linear_solve()
+
+       ! call this % write_solution()
+       
+       print*, dble(k)*system%get_step_size(), n, state % q(k,:), &
+            & state % qdot(k,:), state % qddot(k,:), &
+            & state % R(k,:), state % dR(k,:,:), state % dq
+       
+       call this % check_stop()
+
+       if (this % converged) then
+          exit newton
+       else
+          call update_states()
+       end if
 
        this % iter_num = this % iter_num + 1
 
-      call res % get_residual()
-      
-      !      print *, state % R(2,:)
-
-      call jac % get_jacobian()
-      
-      !     print *, state % dR(2,:,:)
-      
-      call this % linear_solve()
-      
-      call update_states()
-      
-      print*, state % q(2,:), state % qdot(2,:), state % qddot(2,:)
-      
-      call this % check_stop()
-      
-       if (this % converged) exit newton
-       
     end do newton
 
   end subroutine work
@@ -1219,7 +1246,7 @@ contains
 
     class(newton_solve) :: this
 
-    print *, "Finish Newton solve"
+    !    print *, "Finish Newton solve"
 
     if (allocated(this%rnrm)) deallocate(this%rnrm)
     if (allocated(this%unrm)) deallocate(this%unrm)
@@ -1252,11 +1279,12 @@ end module newton_solve_class
 !=====================================================================!
 
 program test
-
+  
   use precision
   use system_class
   use newton_solve_class
-  
+  use backward_difference
+
   real(dp) :: qinit(1), qdotinit(1)
   type(newton_solve) :: newton
 
@@ -1264,15 +1292,21 @@ program test
   qdotinit(1) = 0.0_dp
 
   call initialize_simulation()
-  call state % set_intial_state(qinit, qdotinit)
-  call system % set_current_time_step(2)
-  call newton % solve()
+  call state % set_initial_state(qinit, qdotinit)
+
+  !-------------------------------------------------------------------!
+  ! March in time
+  !-------------------------------------------------------------------!
+
+  time: do k = 2, system % get_num_time_steps()
+
+     call system % set_current_time_step(k)
+     call newton % solve()
+
+     if (.not.newton % converged) exit time
+
+  end do time
 
 contains
 
 end program test
-
-
-
-
-
