@@ -791,12 +791,12 @@ contains
 end module jacobian_class
 
 !=====================================================================!
-! A module that wraps all the data used in Newton solve
+! A module that wraps all the data used in Steady solve
 !
 ! Author :  Komahan Boopathy (komahan@gatech.edu)
 !=====================================================================!
 
-module newton_solve_bean_class
+module steady_solve_bean_class
 
   use precision
 
@@ -804,15 +804,15 @@ module newton_solve_bean_class
 
   private
 
-  public :: newton_solve_bean
+  public :: steady_solve_bean
 
-  type newton_solve_bean
+  type steady_solve_bean
 
      !----------------------------------------------------------------!
      ! Basic setup variables
      !----------------------------------------------------------------!
 
-     integer :: max_newton_iters = 50
+     integer :: max_steady_iters = 50
      integer :: nvars = 1
      integer :: iter_num = 1
 
@@ -836,14 +836,14 @@ module newton_solve_bean_class
      !----------------------------------------------------------------!
 
      integer :: filenum              = 10
-     logical :: write_newton_details = .true.
+     logical :: write_steady_details = .true.
      logical :: exit_on_failure      = .false. 
 
      logical :: converged = .false. 
 
    contains
 
-     procedure :: get_max_newton_iters, set_max_newton_iters
+     procedure :: get_max_steady_iters, set_max_steady_iters
      procedure :: get_num_vars, set_num_vars
 
      procedure :: get_atol_unrm, set_atol_unrm
@@ -853,37 +853,37 @@ module newton_solve_bean_class
      procedure :: get_rtol_rnrm, set_rtol_rnrm
 
      procedure :: get_file_number, set_file_number
-     procedure :: get_write_newton_details, set_write_newton_details
+     procedure :: get_write_steady_details, set_write_steady_details
      procedure :: get_exit_on_failure, set_exit_on_failure
 
-  end type newton_solve_bean
+  end type steady_solve_bean
 
 contains
 
   !-------------------------------------------------------------------!
-  ! Get max_newton_iters
+  ! Get max_steady_iters
   !-------------------------------------------------------------------!
 
-  integer function get_max_newton_iters(this)
+  integer function get_max_steady_iters(this)
 
-    class(newton_solve_bean) :: this
+    class(steady_solve_bean) :: this
 
-    get_max_newton_iters = this % max_newton_iters
+    get_max_steady_iters = this % max_steady_iters
 
-  end function get_max_newton_iters
+  end function get_max_steady_iters
 
   !-------------------------------------------------------------------!
-  ! Set max_newton_iters
+  ! Set max_steady_iters
   !-------------------------------------------------------------------!
 
-  subroutine set_max_newton_iters(this, max_newton_iters)
+  subroutine set_max_steady_iters(this, max_steady_iters)
 
-    class(newton_solve_bean) :: this
-    integer :: max_newton_iters
+    class(steady_solve_bean) :: this
+    integer :: max_steady_iters
 
-    this % max_newton_iters =  max_newton_iters
+    this % max_steady_iters =  max_steady_iters
 
-  end subroutine set_max_newton_iters
+  end subroutine set_max_steady_iters
 
   !-------------------------------------------------------------------!
   ! Get number of variables
@@ -891,7 +891,7 @@ contains
 
   integer function get_num_vars(this)
 
-    class(newton_solve_bean) :: this
+    class(steady_solve_bean) :: this
 
     get_num_vars = this % nvars
 
@@ -903,7 +903,7 @@ contains
 
   subroutine set_num_vars(this, nvars)
 
-    class(newton_solve_bean) :: this
+    class(steady_solve_bean) :: this
     integer :: nvars
 
     this % nvars = nvars
@@ -916,7 +916,7 @@ contains
 
   real(dp) function get_atol_unrm(this)
 
-    class(newton_solve_bean) :: this
+    class(steady_solve_bean) :: this
 
     get_atol_unrm  = this % atol_unrm
 
@@ -928,7 +928,7 @@ contains
 
   subroutine set_atol_unrm(this, atol_unrm)
 
-    class(newton_solve_bean) :: this
+    class(steady_solve_bean) :: this
     real(dp) :: atol_unrm
 
     this % atol_unrm = atol_unrm
@@ -941,7 +941,7 @@ contains
 
   real(dp) function get_atol_rnrm(this)
 
-    class(newton_solve_bean) :: this
+    class(steady_solve_bean) :: this
 
     get_atol_rnrm  = this % atol_rnrm
 
@@ -953,7 +953,7 @@ contains
 
   subroutine set_atol_rnrm(this, atol_rnrm)
 
-    class(newton_solve_bean) :: this
+    class(steady_solve_bean) :: this
     real(dp) :: atol_rnrm
 
     this % atol_rnrm = atol_rnrm
@@ -966,7 +966,7 @@ contains
 
   real(dp) function get_rtol_unrm(this)
 
-    class(newton_solve_bean) :: this
+    class(steady_solve_bean) :: this
 
     get_rtol_unrm  = this % rtol_unrm
 
@@ -978,7 +978,7 @@ contains
 
   subroutine set_rtol_unrm(this, rtol_unrm)
 
-    class(newton_solve_bean) :: this
+    class(steady_solve_bean) :: this
     real(dp) :: rtol_unrm
 
     this % rtol_unrm = rtol_unrm
@@ -991,7 +991,7 @@ contains
 
   real(dp) function get_rtol_rnrm(this)
 
-    class(newton_solve_bean) :: this
+    class(steady_solve_bean) :: this
 
     get_rtol_rnrm  = this % rtol_rnrm
 
@@ -1003,31 +1003,31 @@ contains
   
   integer function get_file_number(this)
 
-    class(newton_solve_bean) :: this
+    class(steady_solve_bean) :: this
 
     get_file_number = this % filenum
 
   end function get_file_number
 
   !-------------------------------------------------------------------!
-  ! Should write the newton iteration details at each time step?
+  ! Should write the steady iteration details at each time step?
   !-------------------------------------------------------------------!
   
-  logical function get_write_newton_details(this)
+  logical function get_write_steady_details(this)
 
-    class(newton_solve_bean) :: this
+    class(steady_solve_bean) :: this
 
-    get_write_newton_details = this % write_newton_details
+    get_write_steady_details = this % write_steady_details
 
-  end function get_write_newton_details
+  end function get_write_steady_details
 
   !-------------------------------------------------------------------!
-  ! Should write the newton iteration details at each time step?
+  ! Should write the steady iteration details at each time step?
   !-------------------------------------------------------------------!
   
   logical function get_exit_on_failure(this)
     
-    class(newton_solve_bean) :: this
+    class(steady_solve_bean) :: this
 
     get_exit_on_failure = this % exit_on_failure
 
@@ -1039,7 +1039,7 @@ contains
 
   subroutine set_rtol_rnrm(this, rtol_rnrm)
 
-    class(newton_solve_bean) :: this
+    class(steady_solve_bean) :: this
     real(dp) :: rtol_rnrm
 
     this % rtol_rnrm = rtol_rnrm
@@ -1052,7 +1052,7 @@ contains
 
   subroutine set_file_number(this, filenum)
 
-    class(newton_solve_bean) :: this
+    class(steady_solve_bean) :: this
     integer :: filenum
 
     this % filenum = filenum
@@ -1060,17 +1060,17 @@ contains
   end subroutine set_file_number
 
   !-------------------------------------------------------------------!
-  ! Set the print control for writing the details of newton solve
+  ! Set the print control for writing the details of steady solve
   !-------------------------------------------------------------------!
 
-  subroutine set_write_newton_details(this, write_newton_details)
+  subroutine set_write_steady_details(this, write_steady_details)
 
-    class(newton_solve_bean) :: this
-    logical :: write_newton_details
+    class(steady_solve_bean) :: this
+    logical :: write_steady_details
 
-    this % write_newton_details = write_newton_details
+    this % write_steady_details = write_steady_details
 
-  end subroutine set_write_newton_details
+  end subroutine set_write_steady_details
 
   !-------------------------------------------------------------------!
   ! Set whether or not to exit when not converged
@@ -1078,14 +1078,14 @@ contains
 
   subroutine set_exit_on_failure(this, exit_on_failure)
 
-    class(newton_solve_bean) :: this
+    class(steady_solve_bean) :: this
     logical :: exit_on_failure
 
     this % exit_on_failure = exit_on_failure
 
   end subroutine set_exit_on_failure
 
-end module newton_solve_bean_class
+end module steady_solve_bean_class
 
 !=====================================================================!
 ! A module that uses Newton's root finding method to approximate the
@@ -1114,7 +1114,7 @@ module newton_solve_class
   use residual_class
   use jacobian_class
 
-  use newton_solve_bean_class
+  use steady_solve_bean_class
   use backward_difference, only : update_states
 
   ! no implicit varaible definitions
@@ -1127,7 +1127,7 @@ module newton_solve_class
   public :: newton_solve
 
   ! a type that contains the logic for Newton's method
-  type, extends(newton_solve_bean) :: newton_solve
+  type, extends(steady_solve_bean) :: newton_solve
 
    contains
 
@@ -1213,7 +1213,7 @@ contains
     class(newton_solve) :: this
     integer :: k, n
     
-    if (this % get_write_newton_details()) then
+    if (this % get_write_steady_details()) then
        k = system % get_current_time_step()
        write(this% get_file_number(),*) dble(k)*system%get_step_size(),&
             &this % iter_num, state % q(k,:),  state % qdot(k,:),&
@@ -1236,15 +1236,15 @@ contains
     this % iter_num = 1
 
     if (allocated(this % rnrm)) deallocate(this % rnrm)
-    allocate(this % rnrm(this % get_max_newton_iters()))
+    allocate(this % rnrm(this % get_max_steady_iters()))
     this%rnrm = 0.0_dp
 
     if (allocated(this % unrm)) deallocate(this % unrm)
-    allocate(this % unrm(this % get_max_newton_iters()))
+    allocate(this % unrm(this % get_max_steady_iters()))
     this%unrm = 0.0_dp
 
     ! Open a file for dumping newton iteration output
-    if (this % get_write_newton_details()) then
+    if (this % get_write_steady_details()) then
        if(this % get_file_number() .ne. 6) then
           open(unit = this% get_file_number(), file="NewtonHistory.dat")
        end if
@@ -1264,7 +1264,7 @@ contains
     type(residual) :: res
     integer :: n
 
-    newton: do n = 1, this % get_max_newton_iters()
+    newton: do n = 1, this % get_max_steady_iters()
 
        call res % get_residual()
 
@@ -1300,7 +1300,7 @@ contains
     if (allocated(this%unrm)) deallocate(this%unrm)
     
     ! close the newton iteration output file if opened
-    if (this % get_write_newton_details()) then
+    if (this % get_write_steady_details()) then
        if(this% get_file_number() .ne. 6) then
           close(this% get_file_number())
        end if
