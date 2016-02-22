@@ -1346,25 +1346,31 @@ program test
   qinit(1) = 1.0_dp
   qdotinit(1) = 0.0_dp
 
+  ! allocates spaces for state variables, residual, jacobian
   call initialize_simulation()
 
   !-------------------------------------------------------------------!
   ! March in time
   !-------------------------------------------------------------------!
-  
+
+  ! set the initial conditions for the problem
   call state % set_initial_state(qinit, qdotinit)
 
   time: do k = 2, system % get_num_time_steps()
-
-     call extrapolate()
-
-     call approximate_derivatives()
-
+     
+     ! set the current time step
      call system % set_current_time_step(k)
-
+     
+     ! extrapolate from previous time step
+     call extrapolate()
+     
+     ! approximate the derivatives
+     call approximate_derivatives()
+     
+     ! solve the linearized system at the current step
      call newton % solve()
-
-     if (.not.newton % converged) exit time
+     
+     if (.not. newton % converged) exit time
 
   end do time
 
