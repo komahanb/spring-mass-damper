@@ -547,7 +547,7 @@ module backward_difference
   private                                                               
 
   public aa, bb
-  public get_bdf_coeffs, update_states, extrapolate, approximate_derivatives
+  public update_states, extrapolate, approximate_derivatives
 
   ! Coefficients for linearising the residual
 
@@ -835,7 +835,7 @@ module newton_solve_bean_class
      ! Print and solution write control
      !----------------------------------------------------------------!
 
-     integer :: filenum              = 6 
+     integer :: filenum              = 10
      logical :: write_newton_details = .true.
      logical :: exit_on_failure      = .false. 
 
@@ -1114,8 +1114,8 @@ module newton_solve_class
   use residual_class
   use jacobian_class
 
-  use backward_difference
   use newton_solve_bean_class
+  use backward_difference, only : update_states
 
   ! no implicit varaible definitions
   implicit none
@@ -1213,13 +1213,14 @@ contains
     class(newton_solve) :: this
     integer :: k, n
     
-    k = system % get_current_time_step()
-    
-    write(this% get_file_number(),*) dble(k)*system%get_step_size(),&
-         &this % iter_num, state % q(k,:),  state % qdot(k,:),&
-         &state % qddot(k,:),  state % R(k,:), state % dR(k,:,:),&
-         &state % dq
-    
+    if (this % get_write_newton_details()) then
+       k = system % get_current_time_step()
+       write(this% get_file_number(),*) dble(k)*system%get_step_size(),&
+            &this % iter_num, state % q(k,:),  state % qdot(k,:),&
+            &state % qddot(k,:),  state % R(k,:), state % dR(k,:,:),&
+            &state % dq
+    end if
+
   end subroutine write_solution
 
   !-------------------------------------------------------------------!
@@ -1242,6 +1243,13 @@ contains
     allocate(this % unrm(this % get_max_newton_iters()))
     this%unrm = 0.0_dp
 
+    ! Open a file for dumping newton iteration output
+    if (this % get_write_newton_details()) then
+       if(this % get_file_number() .ne. 6) then
+          open(unit = this% get_file_number(), file="NewtonHistory.dat")
+       end if
+    end if
+
   end subroutine init
   
   !-------------------------------------------------------------------!
@@ -1254,14 +1262,7 @@ contains
 
     type(jacobian_matrix) :: jac
     type(residual) :: res
-
-    integer :: n=0, k=0
-
-    k = system % get_current_time_step()
-    
-    call extrapolate()
-    
-    call approximate_derivatives()
+    integer :: n
 
     newton: do n = 1, this % get_max_newton_iters()
 
@@ -1278,7 +1279,7 @@ contains
        if (this % converged) then
           exit newton
        else
-          call update_states()
+          call  update_states()
        end if
 
        this % iter_num = this % iter_num + 1
@@ -1298,11 +1299,13 @@ contains
     if (allocated(this%rnrm)) deallocate(this%rnrm)
     if (allocated(this%unrm)) deallocate(this%unrm)
     
-    ! close the file
-    if(this% get_file_number() .ne. 6) then
-       close(this% get_file_number())
+    ! close the newton iteration output file if opened
+    if (this % get_write_newton_details()) then
+       if(this% get_file_number() .ne. 6) then
+          close(this% get_file_number())
+       end if
     end if
-    
+
   end subroutine finish
 
   !-------------------------------------------------------------------!
@@ -1344,15 +1347,21 @@ program test
   qdotinit(1) = 0.0_dp
 
   call initialize_simulation()
-  call state % set_initial_state(qinit, qdotinit)
 
   !-------------------------------------------------------------------!
   ! March in time
   !-------------------------------------------------------------------!
+  
+  call state % set_initial_state(qinit, qdotinit)
 
   time: do k = 2, system % get_num_time_steps()
 
+     call extrapolate()
+
+     call approximate_derivatives()
+
      call system % set_current_time_step(k)
+
      call newton % solve()
 
      if (.not.newton % converged) exit time
