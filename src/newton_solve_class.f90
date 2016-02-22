@@ -26,7 +26,8 @@ module system_class
   private
 
   public :: abstract_residual, abstract_jacobian
-  public :: system, state, mesh, initialize_simulation, set_initial_state
+  public :: system, state, mesh
+  public :: initialize_simulation, set_initial_state, finalize_simulation
 
   type :: system_descriptor
 
@@ -202,6 +203,18 @@ contains
     call mesh   % initialize_mesh_variables()
 
   end subroutine initialize_simulation
+
+  !-------------------------------------------------------------------!
+  ! Finalize all the variables
+  !-------------------------------------------------------------------!
+  
+  subroutine finalize_simulation()
+
+    call state  % finalize_state_variables()
+    call mesh   % finalize_mesh_variables()
+    !  call system % finalize_system_variables()
+
+  end subroutine finalize_simulation
 
   !-------------------------------------------------------------------!
   ! Set the number of variables
@@ -534,263 +547,6 @@ contains
 end module system_class
 
 !=====================================================================!
-! Module that wraps the backward difference integration logic
-!=====================================================================!
-
-module backward_difference
-
-  use precision
-  use system_class
-
-  implicit none
-
-  private                                                               
-
-  public aa, bb
-  public update_states, extrapolate, approximate_derivatives
-
-  ! Coefficients for linearising the residual
-
-  real(dp) :: alpha(6+1), beta(2*6+1)
-  real(dp) :: aa = 0.0_dp, bb = 0.0_dp
-
-contains
-
-  !-------------------------------------------------------------------!
-  ! Returns the bdf coeffs (unscaled with respect to the step size h)
-  !-------------------------------------------------------------------!
-  ! Input:
-  !-------------------------------------------------------------------!
-  ! d : d-th derivative
-  ! m : order of accuracy
-  !-------------------------------------------------------------------!
-  ! Output:
-  !-------------------------------------------------------------------!
-  ! Array of size (d+m) containing the coefficients
-  !-------------------------------------------------------------------!
-
-  function get_bdf_coeffs(d, m) result(c)
-
-    integer, intent(in)    :: d
-    integer, intent(in)    :: m
-    integer                :: n, k
-
-    real(dp)               :: c(d+m), ctmp(d+m)
-    real(dp)               :: x(d+m)
-    real(dp), parameter    :: h = 1.0_dp
-
-    ! number of data points needed for desired derivative degree and
-    ! order of accuracy
-    call differ_backward ( h, d, m, ctmp, x )
-
-    n = m + d
-
-    ! flip the array
-    forall(k=1:n) c(k) = ctmp(n-k+1)
-
-    if(d .eq. 1) aa = c(1)
-    if(d .eq. 2) bb = c(1)
-
-  end function get_bdf_coeffs
-
-  !-------------------------------------------------------------------!
-  ! Updates the state vector and its derivatives at the k-th time step
-  !-------------------------------------------------------------------!
-
-  subroutine update_states()
-
-    integer :: k
-    real(dp) ::dt, dt2
-
-    k = system % get_current_time_step()
-
-    dt = system % get_step_size()
-    dt2 = dt * dt
-
-    state % q(k,:) = state % q(k,:) + state % dq(:) 
-    state % qdot(k, :) = state % qdot(k,:) + aa*state % dq(:)/dt
-    state % qddot(k, :) = state % qddot(k,:) + bb*state % dq(:)/dt2  
-
-  end subroutine update_states
-
-  !-------------------------------------------------------------------!
-  ! Approximate first and second derivative for the next iteration
-  !-------------------------------------------------------------------!
-
-  subroutine approximate_derivatives()
-
-    implicit none
-
-    real(dp) :: dt, dt2
-    integer  :: forder, sorder, k, i
-
-    k = system % get_current_time_step()
-
-    dt = system % get_step_size()
-    dt2 = dt * dt
-
-    !-----------------------------------------------------------------!
-    ! Approximate state at the current step (copy the previous state)
-    !-----------------------------------------------------------------!
-
-    ! state % q(k, :) = state % q(k-1, :)
-
-    !-----------------------------------------------------------------!
-    ! FD approximation to I derivative
-    !-----------------------------------------------------------------!
-
-    ! Determine the order of accuracy for first derivative
-    forder = k - 1
-    if (forder .gt. 6) forder = 6
-
-    ! Get the BDF coefficients for first derivative
-    alpha(1:forder+1) = get_bdf_coeffs(1, forder)
-
-    ! Apply the BDF formula
-    do i = 0, forder ! m+1 points
-       state % qdot(k,:) = state % qdot(k,:) + &
-            & alpha(i+1) * state % q(k-i,:)/dt 
-    end do
-
-    !-----------------------------------------------------------------!
-    ! FD approximation to II derivative
-    !-----------------------------------------------------------------!
-
-    ! Order of accuracy for second derivative
-    sorder = (k-1)/2
-    if (sorder .gt. 6) sorder = 6
-
-    if (sorder .gt. 0) then
-
-       ! Get the BDF coefficients for second derivative   
-       beta(1:2*sorder+1) = get_bdf_coeffs(2, sorder)
-
-       ! Apply the BDF formula for second derivative
-       do i = 0, 2*sorder ! 2m+1 points
-          state % qddot(k,:) = state % qddot(k,:) + &
-               & beta(i+1) * state % q(k-i,:)/dt2
-       end do
-
-    else
-
-       !  we dont have enought points yet
-       bb = 1.0_dp
-       state % qddot(k,:) = (state%qdot(k-1,:) - state%qdot(k,:))/dt
-
-    end if
-
-  end subroutine approximate_derivatives
-
-  !-------------------------------------------------------------------!
-  ! Extrapolate to next time step
-  !-------------------------------------------------------------------!
-
-  subroutine extrapolate()
-
-    integer  :: k
-    real(dp) :: dt, dt2
-
-    k = system % get_current_time_step()
-
-    dt = system % get_step_size()
-    dt2 = dt*dt
-
-    ! Extrapolate using gradient and Hessian information
-    if (k .gt. 1) then
-       state % q(k,:) = state % q(k-1,:) &
-            &+ state % qdot(k-1,:)*dt &
-            &+ state % qddot(k-1,:)*dt2/2.0_dp
-    end if
-
-  end subroutine extrapolate
-
-end module backward_difference
-
-!=====================================================================!
-! The user should provide implementation for the residual subroutine 
-!=====================================================================!
-
-module residual_class
-
-  use precision
-  use system_class
-
-  implicit none
-
-  type, extends(abstract_residual) :: residual
-
-     real(dp) :: M = 1.0_dp
-     real(dp) :: C = 0.02_dp
-     real(dp) :: K = 5.0_dp
-
-   contains
-
-     procedure :: get_residual => user_residual
-
-  end type residual
-
-contains
-  
-  subroutine user_residual(this)
-
-    class(residual) :: this
-    integer :: n
-
-    n = system % get_current_time_step()
-
-    state % R(n,:) = this % M * state % qddot(n,:) &
-         &+ this % C * state % qdot(n,:) &
-         &+ this % K * state % q(n,:)
-
-  end subroutine user_residual
-
-end module residual_class
-
-!=====================================================================!
-! The user should provide implementation for the jacobian subroutine 
-!=====================================================================!
-
-module jacobian_class
-  
-  use precision
-  use system_class
-  use backward_difference, only: aa, bb
-
-  implicit none
-
-  type, extends(abstract_jacobian) :: jacobian_matrix
-
-     real(dp) :: M = 1.0_dp
-     real(dp) :: C = 0.02_dp
-     real(dp) :: K = 5.0_dp
-
-   contains
-
-     procedure :: get_jacobian => user_jacobian
-
-  end type jacobian_matrix
-
-contains
-  
-  subroutine user_jacobian(this)
-
-    class(jacobian_matrix) :: this
-
-    real(dp) :: dt, dt2
-    integer :: n
-
-    n = system % get_current_time_step()
-
-    dt = system % get_step_size()
-    dt2 = dt * dt
-
-    state % dR(n,:,:) = this % K + this % C*aa/dt + this % M*bb/dt2
-
-  end subroutine user_jacobian
-
-end module jacobian_class
-
-!=====================================================================!
 ! A module that wraps all the data used in Steady solve
 !
 ! Author :  Komahan Boopathy (komahan@gatech.edu)
@@ -806,7 +562,9 @@ module steady_solve_bean_class
 
   public :: steady_solve_bean
 
-  type steady_solve_bean
+  type, abstract :: steady_solve_bean
+
+!     private
 
      !----------------------------------------------------------------!
      ! Basic setup variables
@@ -853,8 +611,10 @@ module steady_solve_bean_class
      procedure :: get_rtol_rnrm, set_rtol_rnrm
 
      procedure :: get_file_number, set_file_number
-     procedure :: get_write_steady_details, set_write_steady_details
-     procedure :: get_exit_on_failure, set_exit_on_failure
+
+     procedure :: is_write_steady_details, set_write_steady_details
+     procedure :: is_exit_on_failure, set_exit_on_failure
+     procedure :: is_steady_solve_converged, set_steady_solve_converged
 
   end type steady_solve_bean
 
@@ -1013,25 +773,37 @@ contains
   ! Should write the steady iteration details at each time step?
   !-------------------------------------------------------------------!
   
-  logical function get_write_steady_details(this)
+  logical function is_write_steady_details(this)
 
     class(steady_solve_bean) :: this
 
-    get_write_steady_details = this % write_steady_details
-
-  end function get_write_steady_details
+    is_write_steady_details = this % write_steady_details
+    
+  end function is_write_steady_details
 
   !-------------------------------------------------------------------!
   ! Should write the steady iteration details at each time step?
   !-------------------------------------------------------------------!
   
-  logical function get_exit_on_failure(this)
+  logical function is_exit_on_failure(this)
     
     class(steady_solve_bean) :: this
 
-    get_exit_on_failure = this % exit_on_failure
+    is_exit_on_failure = this % exit_on_failure
 
-  end function get_exit_on_failure
+  end function is_exit_on_failure
+
+  !-------------------------------------------------------------------!
+  ! Is the steady solution converged at this time step
+  !-------------------------------------------------------------------!
+  
+  logical function is_steady_solve_converged(this)
+    
+    class(steady_solve_bean) :: this
+
+    is_steady_solve_converged = this % converged
+
+  end function is_steady_solve_converged
 
   !-------------------------------------------------------------------!
   ! Set relative tolerance of residual norm
@@ -1085,7 +857,395 @@ contains
 
   end subroutine set_exit_on_failure
 
+  !-------------------------------------------------------------------!
+  ! Did the steady solve converge
+  !-------------------------------------------------------------------!
+  
+  subroutine set_steady_solve_converged(this, converged)
+
+    class(steady_solve_bean) :: this
+    logical :: converged
+
+    this % converged = converged
+
+  end subroutine set_steady_solve_converged
+
 end module steady_solve_bean_class
+
+!=====================================================================!
+! Module that defines an interface for steady solver implementation
+!=====================================================================!
+module steady_solve_class
+  
+  use precision
+  use steady_solve_bean_class
+
+  type, abstract, extends(steady_solve_bean) :: steady_solve
+
+   contains
+     
+     ! will provide implementation for just the solution
+     procedure :: solve
+
+     ! define all the deferred procedures
+     procedure(init_steady_solve), deferred :: init
+     procedure(finish_steady_solve), deferred :: finish
+     procedure(work_steady_solve), deferred :: work
+     procedure(linear_steady_solve), deferred :: linear_solve
+     procedure(check_stop_steady_solve), deferred :: check_stop
+     procedure(write_solution_steady_solve), deferred :: write_solution
+
+  end type steady_solve
+
+  interface
+     
+     subroutine init_steady_solve(this)
+       import steady_solve
+       class(steady_solve) :: this
+     end subroutine init_steady_solve
+
+     subroutine finish_steady_solve(this)
+       import steady_solve
+       class(steady_solve) :: this
+     end subroutine finish_steady_solve
+
+     subroutine work_steady_solve(this)
+       import steady_solve
+       class(steady_solve) :: this
+     end subroutine work_steady_solve
+
+     subroutine linear_steady_solve(this)
+       import steady_solve
+       class(steady_solve) :: this
+     end subroutine linear_steady_solve
+
+     subroutine check_stop_steady_solve(this)
+       import steady_solve
+       class(steady_solve) :: this
+     end subroutine check_stop_steady_solve
+
+     subroutine write_solution_steady_solve(this)
+       import steady_solve
+       class(steady_solve) :: this
+     end subroutine write_solution_steady_solve
+     
+  end interface
+
+contains
+
+  !-------------------------------------------------------------------!
+  ! Routine that performs the steady state solution process
+  !-------------------------------------------------------------------!
+
+  subroutine solve(this)
+
+    class(steady_solve) :: this
+    
+    ! perform initialization tasks
+    call this % init()
+    
+    ! perform newton solve
+    call this % work()
+
+    ! perform finalization tasks
+    call this % finish()
+
+  end subroutine solve
+
+  subroutine read_input_file(this)
+    class(steady_solve) :: this
+  end subroutine read_input_file
+
+end module steady_solve_class
+
+!=====================================================================!
+! Module that wraps the backward difference integration logic
+!=====================================================================!
+
+module backward_difference
+
+  use precision
+  use system_class
+  use steady_solve_class
+
+  implicit none
+
+  private                                                               
+
+  public aa, bb, steady
+  public update_states, extrapolate, approximate_derivatives, integrate
+
+  ! Coefficients for linearising the residual
+  real(dp) :: alpha(6+1), beta(2*6+1)
+  real(dp) :: aa = 0.0_dp, bb = 0.0_dp
+
+  ! Any implementation of the steady state solver 
+  ! E.g. newton solver, Newton-Krylov 
+  class(steady_solve), pointer :: steady => null()
+
+contains
+
+  !-------------------------------------------------------------------!
+  ! Returns the bdf coeffs (unscaled with respect to the step size h)
+  !-------------------------------------------------------------------!
+  ! Input:
+  !-------------------------------------------------------------------!
+  ! d : d-th derivative
+  ! m : order of accuracy
+  !-------------------------------------------------------------------!
+  ! Output:
+  !-------------------------------------------------------------------!
+  ! Array of size (d+m) containing the coefficients
+  !-------------------------------------------------------------------!
+
+  function get_bdf_coeffs(d, m) result(c)
+
+    integer, intent(in)    :: d
+    integer, intent(in)    :: m
+    integer                :: n, k
+
+    real(dp)               :: c(d+m), ctmp(d+m)
+    real(dp)               :: x(d+m)
+    real(dp), parameter    :: h = 1.0_dp
+
+    ! number of data points needed for desired derivative degree and
+    ! order of accuracy
+    call differ_backward ( h, d, m, ctmp, x )
+
+    n = m + d
+
+    ! flip the array
+    forall(k=1:n) c(k) = ctmp(n-k+1)
+
+    if(d .eq. 1) aa = c(1)
+    if(d .eq. 2) bb = c(1)
+
+  end function get_bdf_coeffs
+
+  !-------------------------------------------------------------------!
+  ! Updates the state vector and its derivatives at the k-th time step
+  !-------------------------------------------------------------------!
+
+  subroutine update_states()
+
+    integer :: k
+    real(dp) ::dt, dt2
+
+    k = system % get_current_time_step()
+
+    dt = system % get_step_size()
+    dt2 = dt * dt
+
+    state % q(k,:) = state % q(k,:) + state % dq(:) 
+    state % qdot(k, :) = state % qdot(k,:) + aa*state % dq(:)/dt
+    state % qddot(k, :) = state % qddot(k,:) + bb*state % dq(:)/dt2  
+
+  end subroutine update_states
+
+  !-------------------------------------------------------------------!
+  ! Approximate first and second derivative for the next iteration
+  !-------------------------------------------------------------------!
+
+  subroutine approximate_derivatives()
+
+    implicit none
+
+    real(dp) :: dt, dt2
+    integer  :: forder, sorder, k, i
+
+    k = system % get_current_time_step()
+
+    dt = system % get_step_size()
+    dt2 = dt * dt
+
+    !-----------------------------------------------------------------!
+    ! Approximate state at the current step (copy the previous state)
+    !-----------------------------------------------------------------!
+
+    ! state % q(k, :) = state % q(k-1, :)
+
+    !-----------------------------------------------------------------!
+    ! FD approximation to I derivative
+    !-----------------------------------------------------------------!
+
+    ! Determine the order of accuracy for first derivative
+    forder = k - 1
+    if (forder .gt. 6) forder = 6
+
+    ! Get the BDF coefficients for first derivative
+    alpha(1:forder+1) = get_bdf_coeffs(1, forder)
+
+    ! Apply the BDF formula
+    do i = 0, forder ! m+1 points
+       state % qdot(k,:) = state % qdot(k,:) + &
+            & alpha(i+1) * state % q(k-i,:)/dt 
+    end do
+
+    !-----------------------------------------------------------------!
+    ! FD approximation to II derivative
+    !-----------------------------------------------------------------!
+
+    ! Order of accuracy for second derivative
+    sorder = (k-1)/2
+    if (sorder .gt. 6) sorder = 6
+
+    if (sorder .gt. 0) then
+
+       ! Get the BDF coefficients for second derivative   
+       beta(1:2*sorder+1) = get_bdf_coeffs(2, sorder)
+
+       ! Apply the BDF formula for second derivative
+       do i = 0, 2*sorder ! 2m+1 points
+          state % qddot(k,:) = state % qddot(k,:) + &
+               & beta(i+1) * state % q(k-i,:)/dt2
+       end do
+
+    else
+
+       !  we dont have enought points yet
+       bb = 1.0_dp
+       state % qddot(k,:) = (state%qdot(k-1,:) - state%qdot(k,:))/dt
+
+    end if
+
+  end subroutine approximate_derivatives
+
+  !-------------------------------------------------------------------!
+  ! Extrapolate to next time step
+  !-------------------------------------------------------------------!
+
+  subroutine extrapolate()
+
+    integer  :: k
+    real(dp) :: dt, dt2
+
+    k = system % get_current_time_step()
+
+    dt = system % get_step_size()
+    dt2 = dt*dt
+
+    ! Extrapolate using gradient and Hessian information
+    if (k .gt. 1) then
+       state % q(k,:) = state % q(k-1,:) &
+            &+ state % qdot(k-1,:)*dt &
+            &+ state % qddot(k-1,:)*dt2/2.0_dp
+    end if
+
+  end subroutine extrapolate
+
+  subroutine integrate(qinit, qdotinit)
+
+    real(dp), dimension(:) :: qinit, qdotinit
+    integer  :: k
+    
+    ! set the initial conditions for the problem
+    call state % set_initial_state(qinit, qdotinit)
+
+    time: do k = 2, system % get_num_time_steps()
+
+       ! set the current time step
+       call system % set_current_time_step(k)
+
+       ! extrapolate from previous time step
+       call extrapolate()
+
+       ! approximate the derivatives
+       call approximate_derivatives()
+
+       ! solve the linearized system at the current step
+       call steady % solve()
+
+       if (.not. steady % is_steady_solve_converged()) exit time
+
+    end do time
+
+  end subroutine integrate
+
+end module backward_difference
+
+!=====================================================================!
+! The user should provide implementation for the residual subroutine 
+!=====================================================================!
+
+module residual_class
+
+  use precision
+  use system_class
+
+  implicit none
+
+  type, extends(abstract_residual) :: residual
+
+     real(dp) :: M = 1.0_dp
+     real(dp) :: C = 0.02_dp
+     real(dp) :: K = 5.0_dp
+
+   contains
+
+     procedure :: get_residual => user_residual
+
+  end type residual
+
+contains
+  
+  subroutine user_residual(this)
+
+    class(residual) :: this
+    integer :: n
+
+    n = system % get_current_time_step()
+
+    state % R(n,:) = this % M * state % qddot(n,:) &
+         &+ this % C * state % qdot(n,:) &
+         &+ this % K * state % q(n,:)
+
+  end subroutine user_residual
+
+end module residual_class
+
+!=====================================================================!
+! The user should provide implementation for the jacobian subroutine 
+!=====================================================================!
+
+module jacobian_class
+  
+  use precision
+  use system_class
+  use backward_difference, only: aa, bb
+
+  implicit none
+
+  type, extends(abstract_jacobian) :: jacobian_matrix
+
+     real(dp) :: M = 1.0_dp
+     real(dp) :: C = 0.02_dp
+     real(dp) :: K = 5.0_dp
+
+   contains
+
+     procedure :: get_jacobian => user_jacobian
+
+  end type jacobian_matrix
+
+contains
+  
+  subroutine user_jacobian(this)
+
+    class(jacobian_matrix) :: this
+
+    real(dp) :: dt, dt2
+    integer :: n
+
+    n = system % get_current_time_step()
+
+    dt = system % get_step_size()
+    dt2 = dt * dt
+
+    state % dR(n,:,:) = this % K + this % C*aa/dt + this % M*bb/dt2
+
+  end subroutine user_jacobian
+
+end module jacobian_class
 
 !=====================================================================!
 ! A module that uses Newton's root finding method to approximate the
@@ -1104,7 +1264,6 @@ end module steady_solve_bean_class
 !
 ! Author :  Komahan Boopathy (komahan@gatech.edu)
 !=====================================================================!
-
 module newton_solve_class
 
   ! import dependencies
@@ -1114,7 +1273,7 @@ module newton_solve_class
   use residual_class
   use jacobian_class
 
-  use steady_solve_bean_class
+  use steady_solve_class
   use backward_difference, only : update_states
 
   ! no implicit varaible definitions
@@ -1127,21 +1286,22 @@ module newton_solve_class
   public :: newton_solve
 
   ! a type that contains the logic for Newton's method
-  type, extends(steady_solve_bean) :: newton_solve
+  type, extends(steady_solve) :: newton_solve
 
    contains
 
      ! public procedures
-     procedure, public :: solve => solve
+
+     !   procedure, public :: solve => solve
 
      ! private procedures
-     procedure, private :: init => init
-     procedure, private :: finish => finish
-     procedure, private :: work => work
+     procedure :: init => init
+     procedure :: finish => finish
+     procedure :: work => work
 
-     procedure, private :: linear_solve
-     procedure, private :: check_stop
-     procedure, private :: write_solution
+     procedure :: linear_solve => linear_solve
+     procedure :: check_stop => check_stop
+     procedure :: write_solution => write_solution
 
   end type newton_solve
 
@@ -1213,7 +1373,7 @@ contains
     class(newton_solve) :: this
     integer :: k, n
     
-    if (this % get_write_steady_details()) then
+    if (this % is_write_steady_details()) then
        k = system % get_current_time_step()
        write(this% get_file_number(),*) dble(k)*system%get_step_size(),&
             &this % iter_num, state % q(k,:),  state % qdot(k,:),&
@@ -1244,7 +1404,7 @@ contains
     this%unrm = 0.0_dp
 
     ! Open a file for dumping newton iteration output
-    if (this % get_write_steady_details()) then
+    if (this % is_write_steady_details()) then
        if(this % get_file_number() .ne. 6) then
           open(unit = this% get_file_number(), file="NewtonHistory.dat")
        end if
@@ -1300,32 +1460,13 @@ contains
     if (allocated(this%unrm)) deallocate(this%unrm)
     
     ! close the newton iteration output file if opened
-    if (this % get_write_steady_details()) then
+    if (this % is_write_steady_details()) then
        if(this% get_file_number() .ne. 6) then
           close(this% get_file_number())
        end if
     end if
 
   end subroutine finish
-
-  !-------------------------------------------------------------------!
-  ! Routine that performs newton solve                                                                   
-  !-------------------------------------------------------------------!
-
-  subroutine solve(this)
-
-    class(newton_solve) :: this
-
-    ! perform initialization tasks
-    call this % init()
-
-    ! perform newton solve
-    call this % work()
-
-    ! perform finalization tasks
-    call this % finish()
-
-  end subroutine solve
 
 end module newton_solve_class
 
@@ -1334,45 +1475,30 @@ end module newton_solve_class
 !=====================================================================!
 
 program test
-  
+
   use precision
   use system_class
   use newton_solve_class
   use backward_difference
 
-  real(dp) :: qinit(1), qdotinit(1)
-  type(newton_solve) :: newton
+  implicit none
 
+  real(dp) :: qinit(1), qdotinit(1)
+  type(newton_solve), target :: newton
+
+  ! Set the pointer to the implemenation of steady solver
+  steady => newton
+  
   qinit(1) = 1.0_dp
   qdotinit(1) = 0.0_dp
 
   ! allocates spaces for state variables, residual, jacobian
   call initialize_simulation()
 
-  !-------------------------------------------------------------------!
-  ! March in time
-  !-------------------------------------------------------------------!
-
-  ! set the initial conditions for the problem
-  call state % set_initial_state(qinit, qdotinit)
-
-  time: do k = 2, system % get_num_time_steps()
-     
-     ! set the current time step
-     call system % set_current_time_step(k)
-     
-     ! extrapolate from previous time step
-     call extrapolate()
-     
-     ! approximate the derivatives
-     call approximate_derivatives()
-     
-     ! solve the linearized system at the current step
-     call newton % solve()
-     
-     if (.not. newton % converged) exit time
-
-  end do time
+  call integrate(qinit, qdotinit)
+  
+  ! freeup space and allocated variables so far
+  call finalize_simulation()
 
 contains
 
