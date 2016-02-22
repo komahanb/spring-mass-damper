@@ -852,9 +852,9 @@ module newton_solve_bean_class
      procedure :: get_rtol_unrm, set_rtol_unrm
      procedure :: get_rtol_rnrm, set_rtol_rnrm
 
-     procedure :: set_file_number
-     procedure :: set_write_newton_details
-     procedure :: set_exit_on_failure
+     procedure :: get_file_number, set_file_number
+     procedure :: get_write_newton_details, set_write_newton_details
+     procedure :: get_exit_on_failure, set_exit_on_failure
 
   end type newton_solve_bean
 
@@ -998,6 +998,42 @@ contains
   end function get_rtol_rnrm
 
   !-------------------------------------------------------------------!
+  ! Get the output stream filenum
+  !-------------------------------------------------------------------!
+  
+  integer function get_file_number(this)
+
+    class(newton_solve_bean) :: this
+
+    get_file_number = this % filenum
+
+  end function get_file_number
+
+  !-------------------------------------------------------------------!
+  ! Should write the newton iteration details at each time step?
+  !-------------------------------------------------------------------!
+  
+  logical function get_write_newton_details(this)
+
+    class(newton_solve_bean) :: this
+
+    get_write_newton_details = this % write_newton_details
+
+  end function get_write_newton_details
+
+  !-------------------------------------------------------------------!
+  ! Should write the newton iteration details at each time step?
+  !-------------------------------------------------------------------!
+  
+  logical function get_exit_on_failure(this)
+    
+    class(newton_solve_bean) :: this
+
+    get_exit_on_failure = this % exit_on_failure
+
+  end function get_exit_on_failure
+
+  !-------------------------------------------------------------------!
   ! Set relative tolerance of residual norm
   !-------------------------------------------------------------------!
 
@@ -1105,6 +1141,7 @@ module newton_solve_class
 
      procedure, private :: linear_solve
      procedure, private :: check_stop
+     procedure, private :: write_solution
 
   end type newton_solve
 
@@ -1145,7 +1182,7 @@ contains
   end subroutine linear_solve
   
   !-------------------------------------------------------------------!
-  ! Solve the linear system to find the newton update
+  ! Check if the desired tolerance has been reached
   !-------------------------------------------------------------------!
   
   subroutine check_stop(this)
@@ -1166,6 +1203,24 @@ contains
          & this % converged = .true.
 
   end subroutine check_stop
+
+  !-------------------------------------------------------------------!
+  ! Write the solution to output file or screen
+  !-------------------------------------------------------------------!
+  
+  subroutine write_solution(this)
+    
+    class(newton_solve) :: this
+    integer :: k, n
+    
+    k = system % get_current_time_step()
+    
+    write(this% get_file_number(),*) dble(k)*system%get_step_size(),&
+         &this % iter_num, state % q(k,:),  state % qdot(k,:),&
+         &state % qddot(k,:),  state % R(k,:), state % dR(k,:,:),&
+         &state % dq
+    
+  end subroutine write_solution
 
   !-------------------------------------------------------------------!
   ! Routine for initialization tasks
@@ -1203,11 +1258,9 @@ contains
     integer :: n=0, k=0
 
     k = system % get_current_time_step()
-
-    !    print *, "Executing Newton solve"
-
+    
     call extrapolate()
-
+    
     call approximate_derivatives()
 
     newton: do n = 1, this % get_max_newton_iters()
@@ -1218,11 +1271,7 @@ contains
 
        call this % linear_solve()
 
-       ! call this % write_solution()
-       
-       print*, dble(k)*system%get_step_size(), n, state % q(k,:), &
-            & state % qdot(k,:), state % qddot(k,:), &
-            & state % R(k,:), state % dR(k,:,:), state % dq
+       call this % write_solution()
        
        call this % check_stop()
 
@@ -1246,11 +1295,14 @@ contains
 
     class(newton_solve) :: this
 
-    !    print *, "Finish Newton solve"
-
     if (allocated(this%rnrm)) deallocate(this%rnrm)
     if (allocated(this%unrm)) deallocate(this%unrm)
-
+    
+    ! close the file
+    if(this% get_file_number() .ne. 6) then
+       close(this% get_file_number())
+    end if
+    
   end subroutine finish
 
   !-------------------------------------------------------------------!
