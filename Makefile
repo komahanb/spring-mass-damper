@@ -19,9 +19,10 @@ FC = mpif90
 #------------------------------
 # define any compile-time flags
 #------------------------------
-CC_FLAGS =  -Wall
-CX_FLAGS =  -Wall
-FC_FLAGS =  -cpp -dM -Wno-unused -fbounds-check -Wall -O5
+CC_FLAGS =  -g #-Wall
+CX_FLAGS =  -g #-Wall
+FC_FLAGS =  -g -cpp -dM  -Wno-unused -fbounds-check #-Wall
+
 
 #------------------------------
 # define the suffixes in use
@@ -33,30 +34,44 @@ BIN_DIR=bin
 #-----------------------------------------------------------------------
 # define any directories containing header files other than /usr/include
 #-----------------------------------------------------------------------
-INCLUDES = 
-#-I/usr/local/include -I${PETSC_DIR}/${PETSC_ARCH}/include \
-#	-I${PETSC_DIR}/include #-I${SLEPC_DIR}/include
+INCLUDES = -I/usr/local/include -I${PETSC_DIR}/${PETSC_ARCH}/include \
+	-I${PETSC_DIR}/include #-I${SLEPC_DIR}/include
+
+#export PETSC_DIR=/home/balay/petsc-3.2-p0
+#export PETSC_ARCH=linux-gnu-c-debug        
 #-----------------------------------------------------------------------
 # define library paths in addition to /usr/lib
 #   if I wanted to include libraries not in /usr/lib I'd specify
 #   their path using -Lpath, something like:
 #-----------------------------------------------------------------------
-LIB_FLAGS = -L./lib -L${LD_LIBRARY_PATH}/lib #-L${PETSC_DIR}/${PETSC_ARCH}/lib #-L../lib #-L/home/newhall/lib  -L../lib
+LIB_FLAGS = -L./lib -L${LD_LIBRARY_PATH}/lib -L${PETSC_DIR}/${PETSC_ARCH}/lib #-L../lib #-L/home/newhall/lib  -L../lib
 
 #-----------------------------------------------------------------------
 # define any libraries to link into executable:
 #   if I want to link in libraries (libx.so or libx.a) I use the -llibname 
 #   option, something like (this will link in libmylib.so and libm.so:
 #-----------------------------------------------------------------------
-LIBS =  -ldl -lm -lstdc++ -llapack -lblas # -lpetsc
+LIBS =  -ldl -lm -lstdc++ -llapack -lblas -lpetsc
 
 #--------------------------
 # define the C, C++, Fortran source files
 #--------------------------
-SRC := $(wildcard src/*.f90 src/*.c src/*.cpp)
+#SRCS = ${SRC_DIR}/hello.f90\
+#	${SRC_DIR}/hello2.f90\
+#	${SRC_DIR}/hey.f90
+
+#SRCS = hey.f90 hello.f90 hello1.f90
+#SRC := $(wildcard src/*.f90 src/*.c src/*.cpp)
+SRC	:= src/differ.f90\
+	src/precision.f90\
+	src/unsteady_problem_interface.f90\
+	src/nonlinear_solve_interface.f90\
+	src/linear_solve_interface.f90\
+	src/unsteady_problem.f90\
+	test/test.f90
 
 #-----------------------------------------------------------------------
-# define the C, C++, Fortran object files 
+# define the C,C++, Fortran object files 
 #
 # This uses Suffix Replacement within a macro:
 #   $(name:string1=string2)
@@ -64,13 +79,16 @@ SRC := $(wildcard src/*.f90 src/*.c src/*.cpp)
 # Below we are replacing the suffix .f90,.c,.cpp of all words in the macro SRCS
 # with the .o suffix
 #------------------------------------------------------------------------
+#OBJS = $(SRCS:$(SRC_DIR)/%.*=$(OBJ_DIR)/%.o)
+#OBJS = $(SRCS:.o=.f90)
 OBJ = $(patsubst src/%.f90,obj/%.o,$(SRC))
 
+#OBJECTS  := $(SOURCES:$(SRC_DIR)/%.c=$(OBJDIR)/%.o)
 #------------------------------
 # define the executable file 
 #------------------------------
 
-TARGET = $(BIN_DIR)/test_newton_solver_class
+TARGET = $(BIN_DIR)/test
 #
 # The following part of the makefile is generic; it can be used to 
 # build any executable just by changing the definitions above and by
@@ -89,6 +107,7 @@ $(TARGET): $(OBJ)
 # (see the gnu make manual section about automatic variables)
 
 # Compile
+
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.f90
 	$(FC) $(FC_FLAGS) -c  $< -o $@
 
@@ -100,5 +119,25 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 
 %.o : %.mod
 
+# clean
 clean:
 	$(RM) $(SRC_DIR)/*~ ${OBJ_DIR}/*.o $(TARGET) *.mod
+
+#SU_FC=f90
+#SU_CC=c
+#SU_CX=cpp
+
+######################################
+####### Compilation
+######################################
+#%.o : %.mod
+
+#$(OBJ_DIR)/.$(SU_FC).o:
+#	$(FC) $(FC_FLAGS) -c  $< -o $@
+
+#.$(SU_CC).o:
+#	$(CC) $(CC_FLAGS) -c  $< -o $@
+
+#.$(SU_CX).o:
+#	$(CX) $(CX_FLAGS) -c  $< -o $@
+
