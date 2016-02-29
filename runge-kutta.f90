@@ -41,7 +41,7 @@ contains
     real(8) :: res = 0.0d0, jac = 0.0d0
     real(8) :: tmp = 0.0d0, fd = 0.0d0, deltak = 0.0d0, small = 1.0d-8
 
-    newton: do  i = i, max_newton
+    newton: do  i = 1, max_newton
 
        ! find residual
        Res = (k(1,1) - ydot(time(1) + h*b(1), q(1) + h*c(1)*k(1,1)))
@@ -73,7 +73,6 @@ contains
 
 
   end subroutine newton_raphson
-
 
   !-------------------------------------------------------------------!
   ! Explicit Runge Kutta for first order system
