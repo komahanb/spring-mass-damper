@@ -14,7 +14,7 @@ program runge_kutta
   ! Solve using Explicit RK 4
   call explicit_runge_kutta1(q, n, h)
   write (*, '(2F15.6)', advance='yes') (dble(i-1)*h, &
-       &( (-1.0d0 + q(1) + exp(dble(i-1)*h)) - q(i)), i = 1, N+1)
+       &( (-1.0d0 + q(1) + cos(dble(i-1)*h)) - q(i)), i = 1, N+1)
 
   write(*,*)
 
@@ -76,7 +76,7 @@ contains
        time(i+1) = time(i) + h
 
        ! compute the error in solution
-       err(i+1) = q(i+1) - (-1.0d0 + q(1) + exp(time(i+1)))
+       err(i+1) = q(i+1) - (-1.0d0 + q(1) + cos(time(i+1)))
 
     end do
 
@@ -118,10 +118,23 @@ contains
 
     real(8) :: t, q
 
-    ydot = exp(t)
+    ydot = cos(t)
 
   end function ydot
 
+
+
+  !--------------------------------------------------------------------
+  ! First derivative of the state with time
+  !--------------------------------------------------------------------
+
+  real function fprime(t,q)
+
+    real(8) :: t, q
+    
+    ydot = cos(t)
+
+  end function fprime
 
   !-------------------------------------------------------------------!
   ! Explicit Runge Kutta for first order system
@@ -156,7 +169,7 @@ contains
        time(i+1) = time(i) + h
 
        ! compute the error in solution
-       err(i+1) = q(i+1) - (-1.0d0 + q(1) + exp(time(i+1)))
+       err(i+1) = q(i+1) - (-1.0d0 + q(1) + cos(time(i+1)))
 
     end do
 
