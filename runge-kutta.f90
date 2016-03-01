@@ -1,4 +1,3 @@
-
 program runge_kutta
 
   implicit none
@@ -53,7 +52,7 @@ contains
 !!$    B(2) = 1.0d0/2.0d0
 !!$    B(3) = 1.0d0/2.0d0    
 !!$    B(4) = 1.0d0
-!!$
+
 !!$    C(1) = 1.0d0/6.0d0
 !!$    C(2) = 1.0d0/3.0d0
 !!$    C(3) = 1.0d0/3.0d0    
@@ -75,13 +74,16 @@ contains
 
        time(i) = time(i-1) + h
 
-       ! call non linear solver for obtaining the K's by solving the
+       ! Call non linear solver for obtaining the K's by solving the
        ! linearized non-linear system
-       call newton_raphson(1, time(i), q(i), B, c, qdot(i))
-       !call newton1(1, time(I), q(i), qdot(i), b, c)
+
+       ! call newton_raphson(1, time(i), q(i), B, c, qdot(i))
+       ! find qdot values at different stages
+       call newton1(1, time(I), q(i), qdot(i), b, c)
 
        K(1,i) = qdot(i)
 
+       ! update the state using the qdot values
        q(i) = q(i-1)   
        do j = 1, order
           q(i) = q(i) + h*C(j)*K(j,i-1)
