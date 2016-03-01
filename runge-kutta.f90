@@ -77,8 +77,8 @@ contains
 
        ! call non linear solver for obtaining the K's by solving the
        ! linearized non-linear system
-       !call newton_raphson(1, time(i), q(i), B, c, Ktmp)
-       call newton1(1, time(I), q(i), qdot(i), b, c)
+       call newton_raphson(1, time(i), q(i), B, c, qdot(i))
+       !call newton1(1, time(I), q(i), qdot(i), b, c)
 
        K(1,i) = qdot(i)
 
