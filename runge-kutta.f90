@@ -2,22 +2,25 @@ program runge_kutta
 
   implicit none
 
-  integer, parameter :: N = 100
+  integer, parameter :: N = 1000
   real(8), parameter :: h = 0.1d0
   real(8) :: q(N+1)=0.0d0,qdot(N+1)=0.0d0
   integer :: i
 
   ! set initial condition
-  q(1) = 15.0d0
+  q(1) = 0.0d0
 
   ! Solve using IRK
-  q = 0.0d0; q(1) = 15.0d0;
+  q = 0.0d0; q(1) = 0.0d0;
   call irk(q, qdot, n,h)
   write (*, '(4F15.6)', advance='yes') (dble(i-1)*h, &
-       &(q(i)), (-1.0d0 + q(1) + exp(dble(i-1)*h)),qdot(i), i = 1, N+1)
-
+       & (q(i)), (0.0d0 +sin(dble(i-1)*h)), qdot(i), i = 1, N+1)
+  
   ! Solve using ERK4
-  !  call explicit_runge_kutta1(q, n, h)
+  !call explicit_runge_kutta1(q, n, h)
+  !write (*, '(4F15.6)', advance='yes') (dble(i-1)*h, &
+  !     & (q(i)), (0.0d0 +sin(dble(i-1)*h)), qdot(i), i = 1, N+1)
+
   !  write (*, '(2F15.6)', advance='yes') (dble(i-1)*h, &
   !       &( (-1.0d0 + q(1) + exp(dble(i-1)*h)) - q(i)), i = 1, N+1)
   !  write(*,*)
@@ -70,26 +73,23 @@ contains
     ! March in time
     do i = 2, N + 1
 
-       q(i) = q(i-1)   
-
+       q(i)    = q(i-1) 
        time(i) = time(i-1) + h
 
        ! Call non linear solver for obtaining the K's by solving the
        ! linearized non-linear system
 
-       ! call newton_raphson(1, time(i), q(i), B, c, qdot(i))
        ! find qdot values at different stages
+       ! call newton_raphson(1, time(i), q(i), B, c, qdot(i))
        call newton1(1, time(I), q(i), qdot(i), b, c)
 
        K(1,i) = qdot(i)
 
        ! update the state using the qdot values
-       q(i) = q(i-1)   
        do j = 1, order
-          q(i) = q(i) + h*C(j)*K(j,i-1)
+          q(i) = q(i) + h*C(j)*K(j,i)
        end do
-
-       time(i) = time(i-1) + h
+       ! print*, q(i), qdot(i), h, C(1)
 
     end do
 
@@ -205,7 +205,7 @@ contains
     real(8) :: q, qdot, t
 
     ! Res = qdot + q
-    res = qdot - exp(t)
+    res = qdot - cos(t)
 
   end subroutine residual
 
@@ -277,7 +277,7 @@ contains
        time(i+1) = time(i) + h
 
        ! compute the error in solution
-       err(i+1) = q(i+1) - (-1.0d0 + q(1) + exp(time(i+1)))
+       !err(i+1) = q(i+1) - (-1.0d0 + q(1) + exp(time(i+1)))
 
     end do
 
@@ -319,7 +319,7 @@ contains
 
     real(8) :: t, q
 
-    ydot = exp(t)
+    ydot = cos(t)
 
   end function ydot
 
