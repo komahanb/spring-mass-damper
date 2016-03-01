@@ -12,23 +12,23 @@ program runge_kutta
 
   ! Solve using IRK
   q = 0.0d0; q(1) = 0.0d0;
-  !call irk(q, qdot, n, h)
-  call explicit_runge_kutta1(q, n, h)
+  call irk(q, qdot, n, h)
+  !  call explicit_runge_kutta1(q, n, h)
   write (*, '(3F15.6)', advance='yes') (dble(i-1)*h, &
        & (q(i)), qdot(i), i = 1, N+1)
-  
+
   ! Solve using ERK4
   ! call explicit_runge_kutta1(q, n, h)
   ! write (*, '(4F15.6)', advance='yes') (dble(i-1)*h, &
   !     & (q(i)), (0.0d0 +sin(dble(i-1)*h)), qdot(i), i = 1, N+1)
-  
+
   !  write (*, '(2F15.6)', advance='yes') (dble(i-1)*h, &
   !       &( (-1.0d0 + q(1) + exp(dble(i-1)*h)) - q(i)), i = 1, N+1)
   !  write(*,*)
-  
+
   !  call explicit_euler(q, n, h)
   !  write (*, '(2F15.6)', advance='yes') (dble(i-1)*h, q(i), i = 1, N+1)
-  
+
 contains
 
   !-------------------------------------------------------------------!
@@ -48,6 +48,7 @@ contains
     real(8) :: A(order,order) = 0.0d0, B(order)=0.0d0, C(order)=0.0d0
     real(8) :: deltak(50), res(50), jac(50)
     real(8) :: fd=0.0d0, tmp=0.0d0, small = 1.0d-8,ktmp
+    integer :: ipiv(order), info
 
 !!$    A(1,1) = 1.0d0/2.0d0
 !!$    A(2,2) = 1.0d0/2.0d0
@@ -81,10 +82,12 @@ contains
        ! linearized non-linear system
 
        ! find qdot values at different stages
-       ! call newton_raphson(1, time(i), q(i), B, c, qdot(i))
-       call newton1(1, time(I), q(i), qdot(i), b, c)
-       
-       K(1,i) = qdot(i)
+       !call newton_raphson(1, time(i), q(i), B, c, qdot(i))
+       call newton1(1, time(I), q(i), K(1,i), b, c)
+
+!       K(1,i) = qdot(i)
+
+       qdot(i) = K(1,i)
 
        ! update the state using the qdot values
        do j = 1, order
@@ -110,6 +113,7 @@ contains
     integer :: i, max_newton = 20
     real(8) :: res = 0.0d0, jac = 0.0d0
     real(8) :: tmp = 0.0d0, fd = 0.0d0, deltak = 0.0d0, small = 1.0d-8
+    integer :: ipiv(order), info
 
     newton: do  i = 1, max_newton
 
@@ -126,7 +130,13 @@ contains
        print*, "RES:",res, jac, fd
 
        !solve linear system
-       deltak = -Res/Jac
+       deltak = -Res
+
+       print*, -res/jac
+       !       call DGESV(N, NRHS, A, LDA, IPIV, B, LDB, INFO )
+       call DGESV(order, 1, Jac, order, IPIV, deltak, order, INFO )
+
+       print*, deltak
 
        ! check stop
        if(abs(res) .le. 1.0d-12 &
@@ -146,7 +156,7 @@ contains
   !-------------------------------------------------------------------!
 
   subroutine newton1(order, t, q, qdot, b, c)
-    
+
     implicit none
 
     integer :: order
@@ -155,6 +165,7 @@ contains
     integer :: i, max_newton = 20
     real(8) :: res = 0.0d0, jac = 0.0d0
     real(8) :: tmp = 0.0d0, fd = 0.0d0, deltak = 0.0d0, small = 1.0d-8
+    integer :: ipiv(order), info
 
     newton: do  i = 1, max_newton
 
@@ -171,17 +182,20 @@ contains
 
        !       tmp = (k + small - ydot(time + h*b(1), q + h*c(1)*k+small))
        !       fd = (tmp-res)/small
-       
+
        jac = (tmp - res)/small ! dR/dqdot
-       
-       !print*, res, jac
+
+       print*, jac
 
        ! find jacobian
        !Jac = 1.0d0 - ydot_k(time + h*b(1), q + h*c(1)*k)*h*b(1)
-       
+
        !solve linear system
-       deltak = -Res/Jac
-       
+       deltak = -Res
+
+       ! call DGESV(N, NRHS, A, LDA, IPIV, B, LDB, INFO )
+       call DGESV(order, 1, Jac, order, IPIV, deltak, order, INFO )
+
        ! check stop
        if(abs(res) .le. 1.0d-12 &
             & .or. abs(deltak).le.1.0d-12) exit newton
