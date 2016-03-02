@@ -37,6 +37,7 @@ module runge_kutta_class
 
    contains
 
+     procedure :: integrate
      procedure :: init, finalize
      procedure :: get_first_stage_deriv
      procedure :: approx_q
@@ -46,6 +47,25 @@ module runge_kutta_class
   end type DIRK
 
 contains
+
+  !--------------------------------------------------------------------!
+  ! Procedure that will be called by the end user to march in time
+  !--------------------------------------------------------------------!
+
+  subroutine integrate(this, q, qdot, N, h)
+    
+    class(dirk) :: this
+    real(8), dimension(:) :: q, qdot
+    integer :: N 
+    real(8) :: h
+    integer :: k
+
+    ! March in time
+    march: do k = 2, N + 1
+       
+    end do march
+    
+  end subroutine integrate
 
   !-------------------------------------------------------------------!
   ! Get the stage derivatives by solving the nonlinear system using
@@ -62,7 +82,6 @@ contains
 
     ! solve the nonlinear system to get the stage derivatives
     ! call newton1(1, time(I), q(i), K(1,i), b, c)
-
 
   end function get_first_stage_deriv
 
@@ -140,7 +159,7 @@ program main
   ! call dirk % integrate()
 
   ! Deallocate the Butcher tableau
-  call dirk % finalize()
+  call dirk1 % finalize()
 
   print *, "Executing complete"
 
