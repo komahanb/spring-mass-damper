@@ -30,7 +30,10 @@ module runge_kutta_class
   ! Diagonally implicit Runge-Kutta
   type, extends(RK) :: DIRK
 
-     integer :: dirk_stages
+     integer :: dirk_stages = 1 ! default number of stages
+     real(8) :: h = 0.1d0       ! default step size ( will reconsider
+                                ! when implementing adaptive step
+                                ! size)
      real(8), dimension(:,:), allocatable :: A ! forms the coeff matrix
      real(8), dimension(:)  , allocatable :: B ! multiplies the state derivatives
      real(8), dimension(:)  , allocatable :: C ! multiplies the time
@@ -40,7 +43,10 @@ module runge_kutta_class
      procedure :: integrate
      procedure :: init, finalize
      procedure :: get_first_stage_deriv
-     procedure :: approx_q
+     procedure :: get_approx_q
+     procedure :: update_states
+     procedure :: newton_solve
+
      !procedure :: get_second_stage_deriv
      !procedure :: approx_qdot
 
@@ -50,22 +56,62 @@ contains
 
   !--------------------------------------------------------------------!
   ! Procedure that will be called by the end user to march in time
+  ! Input: 
+  ! state arrays q and qdot with initial conditions set at q(1)
+  ! number of steps N
+  ! step size h
   !--------------------------------------------------------------------!
 
-  subroutine integrate(this, q, qdot, N, h)
+  subroutine integrate(this, q, qdot, N)
     
     class(dirk) :: this
-    real(8), dimension(:) :: q, qdot
-    integer :: N 
-    real(8) :: h
-    integer :: k
 
+    real(8), intent(inout), dimension(:) :: q, qdot
+    real(8) :: time(10)
+    integer, intent(in) :: N 
+    integer :: k
+    real(8) :: ydot(this % dirk_stages) ! stage derivatives
+    
     ! March in time
     march: do k = 2, N + 1
-       
+
+       q(k) = q(k-1) 
+
+       time(k) = time(k-1) + this % h
+
+       !call this % newton_solve()
+
+       call this % update_states(k, q, ydot)
+
     end do march
     
   end subroutine integrate
+
+  subroutine newton_solve(this)
+
+    class(dirk) :: this
+    
+  end subroutine newton_solve
+
+  subroutine update_states(this, k, q, ydot, qdot, yddot)
+
+    class(dirk) :: this
+
+    integer, intent(in) :: k
+    real(8), intent(inout), dimension(:) :: q ! actual states
+    real(8), intent(in), dimension(:) :: ydot ! first stage derivative
+    real(8), OPTIONAL, intent(inout), dimension(:) :: qdot ! actual state
+    real(8), OPTIONAL, intent(in), dimension(:) :: yddot ! second stage derivative
+
+    ! update q (for first order ODE)
+    q(k) = q(k-1) + this % h*sum(this % B(:)*ydot(:))
+    
+    ! update qdot (for second order ODE)
+    if (present(qdot) .and. present(yddot))then
+       qdot(k) = qdot(k-1) + this % h*sum(this % B(:)*yddot(:))
+    end if
+
+  end subroutine update_states
 
   !-------------------------------------------------------------------!
   ! Get the stage derivatives by solving the nonlinear system using
@@ -76,7 +122,6 @@ contains
     
     class(dirk) :: this
     real(8) :: q, qdot(this % dirk_stages)
-    real(8) :: h
     integer :: r
     real(8) :: ydot(this % dirk_stages)
 
@@ -86,11 +131,10 @@ contains
   end function get_first_stage_deriv
 
   ! Approximate q based on the runge-kutta scheme
-  real(8) function approx_q(this)
+  real(8) function get_approx_q(this)
     
     class(dirk) :: this
     real(8) :: q, qdot(this % dirk_stages)
-    real(8) :: h
     integer :: r, i, j
     real(8) :: ydot(this % dirk_stages)
     
@@ -99,25 +143,29 @@ contains
     
     do i = 1, this % dirk_stages
        do  j = 1, this % dirk_stages
-          q = q + h * this % A(j,i)*ydot(j)
+          q = q + this % h * this % A(j,i)*ydot(j)
        end do
     end do
     
-  end function approx_q
+  end function get_approx_q
 
   ! Initialize the dirk datatype and construct the tableau
-  subroutine init(this, dirk_stages)
+  subroutine init(this, dirk_stages, h)
 
     class(dirk) :: this
-    integer :: dirk_stages
+    integer, OPTIONAL, intent(in) :: dirk_stages
+    real(8), OPTIONAL, intent(in) :: h
 
     ! set the order of integration
-    this % dirk_stages = dirk_stages
-
+    if (present(dirk_stages)) this % dirk_stages = dirk_stages
+    
+    ! set the user supplied initial step size
+    if (present(h)) this % h = h 
+    
     ! allocate space for the tableau
-    allocate(this % A(dirk_stages, dirk_stages))
-    allocate(this % B(dirk_stages))    
-    allocate(this % C(dirk_stages))
+    allocate(this % A(this % dirk_stages, this % dirk_stages))
+    allocate(this % B(this % dirk_stages))    
+    allocate(this % C(this % dirk_stages))
 
     ! put the entries into the tableau
     if (this % dirk_stages .eq. 1) then 
@@ -150,11 +198,17 @@ program main
   implicit none
 
   type(DIRK) :: dirk1, dirk2
+  real(8) :: h = 1.0d-2
+
+  !real :: a(3), b(3)
+  !a = (/1.,2.,3./)
+  !b = (/4.,5.,6./)
+  !print *, sum(a*b)
 
   print *, "Beginning execution"
   
   ! Initialize DIRK instance and create the Butcher tableau
-  call dirk1 % init(1)
+  call dirk1 % init()
   
   ! call dirk % integrate()
 
