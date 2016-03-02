@@ -78,26 +78,60 @@ contains
        q(k) = q(k-1) 
 
        time(k) = time(k-1) + this % h
-
-       !call this % newton_solve()
-
+       
+       ! find the stage derivatives ydot
+       
+       call this % newton_solve(k, time(k), q(k), ydot(k))
+       
        call this % update_states(k, q, ydot)
 
     end do march
     
   end subroutine integrate
 
-  subroutine newton_solve(this)
-
-    class(dirk) :: this
+  ! Newton solve to solve the linear system to get the stage derivatives at each time step
+  subroutine newton_solve(this, k, time, q, qdot)
     
+    class(dirk) :: this
+    integer, intent(in) :: k ! current time step    
+    real(8), intent(in) :: time
+    real(8), intent(inout) :: q, qdot ! actual states at k-th time step
+    real(8), dimension(this % dirk_stages) :: R ! residuals
+    real(8), dimension(this % dirk_stages, this % dirk_stages) :: dR !jacobians
+    integer :: n, jj
+    integer :: max_newton = 20
+    
+    newton: do n = 1, max_newton
+       
+       ! Make as many residual and jacobian calls as the number of stages      
+       forall(jj = 1:this % dirk_stages) R(jj) = residual(time, q, qdot)
+       
+       ! FD approximation of the residual
+       do jj = 1, this % dirk_stages
+          R(jj) = residual(time, q, qdot)
+       end do
+
+    end do newton
+
   end subroutine newton_solve
+  
+  !-------------------------------------------------------------------!
+  ! Residual of the govenrning equations
+  !-------------------------------------------------------------------!
+
+  real(8) pure function residual(time, q, qdot)
+    
+    real(8), intent(in)  :: time
+    real(8), intent(in)  :: q, qdot ! actual states
+
+    residual = qdot + cos(q) - sin(time)
+    
+  end function residual
 
   subroutine update_states(this, k, q, ydot, qdot, yddot)
 
     class(dirk) :: this
-
-    integer, intent(in) :: k
+    integer, intent(in) :: k ! current time step
     real(8), intent(inout), dimension(:) :: q ! actual states
     real(8), intent(in), dimension(:) :: ydot ! first stage derivative
     real(8), OPTIONAL, intent(inout), dimension(:) :: qdot ! actual state
@@ -137,8 +171,7 @@ contains
     real(8) :: q, qdot(this % dirk_stages)
     integer :: r, i, j
     real(8) :: ydot(this % dirk_stages)
-    
-
+   
     ydot = this % get_first_stage_deriv()
     
     do i = 1, this % dirk_stages
