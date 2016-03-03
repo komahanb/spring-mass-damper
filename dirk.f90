@@ -157,10 +157,14 @@ contains
 
   !--------------------------------------------------------------------!
   ! Procedure that will be called by the end user to march in time
+  !--------------------------------------------------------------------!
   ! Input: 
-  ! state arrays q and qdot with initial conditions set at q(1)
-  ! number of steps N
-  ! step size h
+  ! . state arrays q and qdot with initial conditions set at q(1)
+  ! . number of steps N
+  ! . step size h
+  !--------------------------------------------------------------------!
+  ! Output:
+  ! . q, qdot arrays are modified by the routine
   !--------------------------------------------------------------------!
 
   subroutine IntegrateDIRK(this, q, qdot, N)
@@ -358,9 +362,12 @@ program main
   type(IRK)  :: IRK1
   type(ERK)  :: ERK1
 
-  real(8) :: q(N+1), qdot(N+1)
+  real(8) :: q(N+1) = 0.0d0, qdot(N+1) = 0.0d0
 
   print *, "> Beginning execution"
+
+  ! set initial condition
+  q(1) = 1.0
 
   print *, " > Explicit Runge Kutta"
   call ERK1  % init()
@@ -377,6 +384,6 @@ program main
   call DIRK1 % integrate(q, qdot, N)
   call DIRK1 % finalize()
   
-  print *, "> Executing complete"
+  print *, "> Execution complete"
 
 end program main
