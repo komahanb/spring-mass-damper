@@ -125,7 +125,7 @@ contains
     real(8), parameter :: alpha = half
 
     ! put the entries into the tableau
-    if (this % num_stages .eq. 2) then 
+    if (this % num_stages .eq. 1) then 
        
        ! Explicit Euler
        
