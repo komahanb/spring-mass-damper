@@ -98,7 +98,7 @@ module runge_kutta_class
   ! Implicit Runge-Kutta  
   !------------------------------------------------------------------!  
 
-  type, abstract, extends(DIRK) :: IRK
+  type, extends(DIRK) :: IRK
 
    contains
 
@@ -168,27 +168,29 @@ contains
     class(DIRK) :: this
 
     real(8), intent(inout), dimension(:) :: q, qdot
-    real(8) :: time(10)
     integer, intent(in) :: N 
-    integer :: k
     real(8) :: ydot(this % num_stages) ! stage derivatives
+    real(8) :: time(10)
+    integer :: k
+
+    ! Integration Logic
     
-    ! March in time
-    march: do k = 2, N + 1
-
-       q(k) = q(k-1) 
-
-       time(k) = time(k-1) + this % h
-       
-       ! find the stage derivatives ydot
-!       qdot  = q + h*c(1)*(ydot+small)
-
- !      call this % newton_solve(k, time(k), q(k), ydot(k))
-       
-       call this % update_states(k, q, ydot)
-
-    end do march
-    
+!!$    ! March in time
+!!$    march: do k = 2, N + 1
+!!$
+!!$       q(k) = q(k-1) 
+!!$
+!!$       time(k) = time(k-1) + this % h
+!!$       
+!!$       ! find the stage derivatives ydot
+!!$!       qdot  = q + h*c(1)*(ydot+small)
+!!$
+!!$ !      call this % newton_solve(k, time(k), q(k), ydot(k))
+!!$       
+!!$       call this % update_states(k, q, ydot)
+!!$
+!!$    end do march
+   
   end subroutine IntegrateDIRK
   
   !-------------------------------------------------------------------!
@@ -349,24 +351,32 @@ program main
 
   implicit none
 
-  type(DIRK) :: dirk1, dirk2
-  real(8) :: h = 1.0d-2
+  integer, parameter :: N=  100
+  real(8), parameter :: h = 1.0d-2
 
-  !real :: a(3), b(3)
-  !a = (/1.,2.,3./)
-  !b = (/4.,5.,6./)
-  !print *, sum(a*b)
+  type(DIRK) :: DIRK1
+  type(IRK)  :: IRK1
+  type(ERK)  :: ERK1
 
-  print *, "Beginning execution"
+  real(8) :: q(N+1), qdot(N+1)
+
+  print *, "> Beginning execution"
+
+  print *, " > Explicit Runge Kutta"
+  call ERK1  % init()
+  call ERK1  % integrate(q, qdot, N)
+  call ERK1  % finalize()
   
-  ! Initialize DIRK instance and create the Butcher tableau
-  call dirk1 % init()
+  print *, " > Implicit Runge Kutta"
+  call IRK1  % init()
+  call IRK1  % integrate(q, qdot, N)
+  call IRK1  % finalize()
+
+  print *, " > Diagonally-Implicit Runge Kutta"
+  call DIRK1 % init()
+  call DIRK1 % integrate(q, qdot, N)
+  call DIRK1 % finalize()
   
-  ! call dirk % integrate()
-
-  ! Deallocate the Butcher tableau
-  call dirk1 % finalize()
-
-  print *, "Executing complete"
+  print *, "> Executing complete"
 
 end program main
