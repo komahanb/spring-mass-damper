@@ -115,7 +115,104 @@ contains
   !-------------------------------------------------------------------!
   
   subroutine ButcherERK(this)
+
     class(ERK) :: this
+    real(8), parameter :: half = 1.0d0/2.0d0
+    real(8), parameter :: onethird = 1.0d0/3.0d0
+    real(8), parameter :: onesixth = 1.0d0/6.0d0
+    real(8), parameter :: oneeight = 1.0d0/8.0d0
+    real(8), parameter :: one  = 1.0d0
+    real(8), parameter :: alpha = half
+
+    ! put the entries into the tableau
+    if (this % num_stages .eq. 2) then 
+       
+       ! Explicit Euler
+       
+       this % B(1) = one
+       this % C(1) = 0.0d0
+
+       this % order = 1
+
+    else if (this % num_stages .eq. 2) then 
+
+       ! Midpoint method alpha = 1.0d0/2.0d0
+       ! Raltson method alpha = 2.0d0/3.0d0
+       ! Heun's Method alpha = 1.0d0
+       
+       this % A(2,1) = alpha
+
+       this % B(1) = (one-half/alpha)
+       this % B(2) = half/alpha
+
+       this % C(1) = 0.0d0
+       this % C(2) = alpha
+
+       this % order = 2 
+
+    else if (this % num_stages .eq. 3) then 
+
+       ! Kutta's third order method
+       
+       this % A(2,1) = half
+       this % A(3,1) = -one
+       this % A(3,2)  = 2.0d0
+       
+       this % B(1) = onesixth
+       this % B(2) = 2.0d0*onethird
+       this % B(3) = onesixth
+
+       this % C(1) = 0.0d0
+       this % C(2) = half
+       this % C(3) = one
+
+       this % order = 3
+
+    else if (this % num_stages .eq. 4) then 
+       
+       ! Kutta's formula more accurate (not the classical Runge formula)
+       
+       this % A(2,1) = onethird
+       this % A(3,1) = -onethird
+       this % A(4,1) = one
+       this % A(3,2) = one
+       this % A(4,2) = -one       
+       this % A(4,3) = one
+
+       this % B(1) = oneeigth
+       this % B(2) = 3.0d0*oneeigth
+       this % B(3) = this % B(2)
+       this % B(4) = oneeigth
+
+       this % C(1) = 0.0d0
+       this % C(2) = onethird
+       this % C(3) = 2.0d0 * this % C(2)
+       this % C(4) = one
+
+       this % order = 4
+       
+!!$       ! The classical RK tableau
+!!$       this % A(2,1) =  half
+!!$       this % A(3,2) =  half
+!!$       this % A(4,3) =  one
+!!$
+!!$       this % B(1) = onesixth
+!!$       this % B(2) = onethird
+!!$       this % B(3) = onethird
+!!$       this % B(4) = onesixth
+!!$
+!!$       this % C(1) = 0.0d0
+!!$       this % C(2) = half
+!!$       this % C(3) = half
+!!$       this % C(4) = one
+
+    else
+       
+       print *, this % num_stages
+       stop "ERK Butcher tableau is not implemented for the requested order"
+
+    end if
+
   end subroutine ButcherERK
  
   !-------------------------------------------------------------------!
@@ -131,8 +228,10 @@ contains
     real(8), parameter :: one  = 1.0d0
     real(8), parameter :: alpha = 2.0d0*cos(PI/18.0d0)/sqrt(3.0d0)
 
-    ! put the entries into the tableau
+    ! put the entries into the tableau (ROGER ALEXANDER 1977)
     if (this % num_stages .eq. 1) then 
+
+       ! Implicit mid-point rule (A-stable)
 
        this % A(1,1) = half
        this % B(1)   = one
@@ -142,9 +241,11 @@ contains
 
     else if (this % num_stages .eq. 2) then
 
+       ! Crouzeix formula (A-stable)
+
        this % A(1,1) = half + tmp
+       this % A(2,1) = -one/sqrt(3.0d0)
        this % A(2,2) = this % A(1,1)
-       this % A(1,2) = -one/sqrt(3.0d0)
 
        this % B(1)   = half
        this % B(2)   = half
@@ -156,14 +257,14 @@ contains
 
     else if (this % num_stages .eq. 3) then
 
+       ! Crouzeix formula (A-stable)
+
        this % A(1,1) = (one+alpha)*half
+       this % A(2,1) = -half*alpha
+       this % A(3,1) =  one + alpha
        this % A(2,2) = this % A(1,1)
-       this % A(3,3) = this % A(1,1)
-
-       this % A(1,2) = -half*alpha
        this % A(3,2) = -(one + 2.0d0*alpha)
-
-       this % A(1,3) =  one + alpha
+       this % A(3,3) = this % A(1,1)
        
        this % B(1)   = one/(6.0d0*alpha**2)
        this % B(2)   = one - one/(3.0d0*alpha**2)
@@ -175,10 +276,14 @@ contains
        
        this % order = 4
 
+    else if (this % num_stages .eq. 4) then
+
+       stop "Four stage DIRK formula does not exist"
+       
     else
        
        print *, this % num_stages
-       stop "Butcher tableau is not implemented for the requested order"
+       stop "DIRK Butcher tableau is not implemented for the requested order"
 
     end if
 
