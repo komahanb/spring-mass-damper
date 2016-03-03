@@ -190,8 +190,12 @@ contains
     end do march
     
   end subroutine IntegrateDIRK
+  
+  !-------------------------------------------------------------------!
+  ! Newton solve to solve the linear system to get the stage
+  ! derivatives at each time step
+  !-------------------------------------------------------------------!
 
-  ! Newton solve to solve the linear system to get the stage derivatives at each time step
   subroutine newton_solve(this, k, time, q, qdot, ydot)
     
     class(dirk) :: this
@@ -253,8 +257,11 @@ contains
     ! call newton1(1, time(I), q(i), K(1,i), b, c)
 
   end function get_first_stage_deriv
-
+  
+  !-------------------------------------------------------------------!
   ! Approximate q based on the runge-kutta scheme
+  !-------------------------------------------------------------------!
+  
   real(8) function get_approx_q(this)
     
     class(dirk) :: this
@@ -272,7 +279,10 @@ contains
     
   end function get_approx_q
 
+  !-------------------------------------------------------------------!
   ! Initialize the dirk datatype and construct the tableau
+  !-------------------------------------------------------------------!
+
   subroutine init(this, num_stages, h)
 
     class(rk) :: this
@@ -294,7 +304,10 @@ contains
 
   end subroutine init
 
+  !-------------------------------------------------------------------!
   ! Deallocate the tableau entries
+  !-------------------------------------------------------------------!
+
   subroutine finalize(this)
 
     class(rk) :: this
@@ -305,7 +318,11 @@ contains
 
   end subroutine finalize
 
- subroutine update_states(this, k, q, ydot, qdot, yddot)
+  !-------------------------------------------------------------------!
+  ! Update the states based on RK Formulae
+  !-------------------------------------------------------------------!
+  
+  subroutine update_states(this, k, q, ydot, qdot, yddot)
 
     class(RK) :: this
     integer, intent(in) :: k ! current time step
@@ -316,7 +333,7 @@ contains
 
     ! update q (for first order ODE)
     q(k) = q(k-1) + this % h*sum(this % B(:)*ydot(:))
-    
+
     ! update qdot (for second order ODE)
     if (present(qdot) .and. present(yddot))then
        qdot(k) = qdot(k-1) + this % h*sum(this % B(:)*yddot(:))
@@ -332,7 +349,7 @@ program main
 
   implicit none
 
-!  type(DIRK) :: dirk1, dirk2
+  type(DIRK) :: dirk1, dirk2
   real(8) :: h = 1.0d-2
 
   !real :: a(3), b(3)
@@ -343,12 +360,12 @@ program main
   print *, "Beginning execution"
   
   ! Initialize DIRK instance and create the Butcher tableau
- ! call dirk1 % init()
+  call dirk1 % init()
   
   ! call dirk % integrate()
 
   ! Deallocate the Butcher tableau
-  ! call dirk1 % finalize()
+  call dirk1 % finalize()
 
   print *, "Executing complete"
 
