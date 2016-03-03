@@ -65,9 +65,9 @@ module runge_kutta_class
      
   end interface
 
-  !------------------------------------------------------------------!  
+  !-------------------------------------------------------------------!  
   ! Explicit Runge-Kutta
-  !------------------------------------------------------------------!  
+  !-------------------------------------------------------------------!  
 
   type, extends(RK) :: ERK
 
@@ -78,9 +78,9 @@ module runge_kutta_class
 
   end type ERK
 
-  !------------------------------------------------------------------!  
+  !-------------------------------------------------------------------!  
   ! Diagonally implicit Runge-Kutta
-  !------------------------------------------------------------------!  
+  !-------------------------------------------------------------------!  
 
   type, extends(RK) :: DIRK
 
@@ -95,9 +95,9 @@ module runge_kutta_class
 
   end type DIRK
 
-  !------------------------------------------------------------------!  
+  !-------------------------------------------------------------------!  
   ! Implicit Runge-Kutta  
-  !------------------------------------------------------------------!  
+  !-------------------------------------------------------------------!  
 
   type, extends(DIRK) :: IRK
 
@@ -110,12 +110,17 @@ module runge_kutta_class
   
 contains
 
+  !-------------------------------------------------------------------!
+  ! Butcher's tableau for ERK 
+  !-------------------------------------------------------------------!
+  
   subroutine ButcherERK(this)
     class(ERK) :: this
   end subroutine ButcherERK
-    subroutine ButcherIRK(this)
-    class(IRK) :: this
-  end subroutine ButcherIRK
+ 
+  !-------------------------------------------------------------------!
+  ! Butcher's tableau for DIRK 
+  !-------------------------------------------------------------------!
 
   subroutine ButcherDIRK(this)
 
@@ -123,7 +128,7 @@ contains
     real(8), parameter :: PI = 22.0d0/7.0d0
     real(8), parameter :: tmp  = 1.0d0/(2.0d0*sqrt(3.0d0))
     real(8), parameter :: half = 1.0d0/2.0d0
-    real(8), parameter :: one  = 1.0d0/2.0d0  
+    real(8), parameter :: one  = 1.0d0
     real(8), parameter :: alpha = 2.0d0*cos(PI/18.0d0)/sqrt(3.0d0)
 
     ! put the entries into the tableau
@@ -154,9 +159,11 @@ contains
        this % A(1,1) = (one+alpha)*half
        this % A(2,2) = this % A(1,1)
        this % A(3,3) = this % A(1,1)
+
        this % A(1,2) = -half*alpha
-       this % A(1,3) =  one + alpha
        this % A(3,2) = -(one + 2.0d0*alpha)
+
+       this % A(1,3) =  one + alpha
        
        this % B(1)   = one/(6.0d0*alpha**2)
        this % B(2)   = one - one/(3.0d0*alpha**2)
@@ -177,6 +184,26 @@ contains
 
   end subroutine ButcherDIRK
 
+  !-------------------------------------------------------------------!
+  ! Butcher's tableau for IRK 
+  !-------------------------------------------------------------------!
+
+  subroutine ButcherIRK(this)
+    class(IRK) :: this
+  end subroutine ButcherIRK
+
+  !-------------------------------------------------------------------!
+  ! Time integration logic for ERK
+  !-------------------------------------------------------------------!
+  ! Input: 
+  ! . state arrays q and qdot with initial conditions set at q(1)
+  ! . number of steps N
+  ! . step size h
+  !-------------------------------------------------------------------!
+  ! Output:
+  ! . q, qdot arrays are modified by the routine
+  !-------------------------------------------------------------------!
+  
   subroutine IntegrateERK(this, q, qdot, N)
 
     class(ERK) :: this
@@ -188,6 +215,18 @@ contains
     integer :: k
 
   end subroutine IntegrateERK
+
+  !-------------------------------------------------------------------!
+  ! Time integration logic for IRK
+  !-------------------------------------------------------------------!
+  ! Input: 
+  ! . state arrays q and qdot with initial conditions set at q(1)
+  ! . number of steps N
+  ! . step size h
+  !-------------------------------------------------------------------!
+  ! Output:
+  ! . q, qdot arrays are modified by the routine
+  !-------------------------------------------------------------------!
 
   subroutine IntegrateIRK(this, q, qdot, N)
 
@@ -201,17 +240,17 @@ contains
 
   end subroutine IntegrateIRK
 
-  !--------------------------------------------------------------------!
-  ! Procedure that will be called by the end user to march in time
-  !--------------------------------------------------------------------!
+  !-------------------------------------------------------------------!
+  ! Time integration logic for DIRK
+  !-------------------------------------------------------------------!
   ! Input: 
   ! . state arrays q and qdot with initial conditions set at q(1)
   ! . number of steps N
   ! . step size h
-  !--------------------------------------------------------------------!
+  !-------------------------------------------------------------------!
   ! Output:
   ! . q, qdot arrays are modified by the routine
-  !--------------------------------------------------------------------!
+  !-------------------------------------------------------------------!
 
   subroutine IntegrateDIRK(this, q, qdot, N)
     
@@ -293,7 +332,7 @@ contains
     
   end function residual
 
-   !-------------------------------------------------------------------!
+  !-------------------------------------------------------------------!
   ! Get the stage derivatives by solving the nonlinear system using
   ! Newton's method
   !-------------------------------------------------------------------!
@@ -438,3 +477,13 @@ program main
   print *, "> Execution complete"
 
 end program main
+
+
+
+
+
+
+
+
+
+
