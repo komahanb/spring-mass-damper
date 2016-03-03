@@ -80,7 +80,8 @@ contains
        time(k) = time(k-1) + this % h
        
        ! find the stage derivatives ydot
-       
+       qdot  = q + h*c(1)*(ydot+small)
+
        call this % newton_solve(k, time(k), q(k), ydot(k))
        
        call this % update_states(k, q, ydot)
@@ -90,22 +91,29 @@ contains
   end subroutine integrate
 
   ! Newton solve to solve the linear system to get the stage derivatives at each time step
-  subroutine newton_solve(this, k, time, q, qdot)
+  subroutine newton_solve(this, k, time, q, qdot, ydot)
     
     class(dirk) :: this
     integer, intent(in) :: k ! current time step    
     real(8), intent(in) :: time
-    real(8), intent(inout) :: q, qdot ! actual states at k-th time step
+    real(8), intent(inout) :: q, qdot, ydot
     real(8), dimension(this % dirk_stages) :: R ! residuals
     real(8), dimension(this % dirk_stages, this % dirk_stages) :: dR !jacobians
     integer :: n, jj
     integer :: max_newton = 20
+    real(8) :: tmp(this % dirk_stages)
     
     newton: do n = 1, max_newton
        
        ! Make as many residual and jacobian calls as the number of stages      
-       forall(jj = 1:this % dirk_stages) R(jj) = residual(time, q, qdot)
+       forall(jj = 1:this % dirk_stages) &
+            & R(jj) = residual(time + this % h * C(jj), &
+            & q + this % h * this % B(jj) * ydot(jj), &
+            & qdot) !qdot or ydot
        
+!!$       forall(jj = 1:this % dirk_stages) R(jj) = residual(time, q, qdot+small)
+!!$       call residual(ydot+small, q + h*c(1)*(ydot+small), t+h*b(1), tmp)
+
        ! FD approximation of the residual
        do jj = 1, this % dirk_stages
           R(jj) = residual(time, q, qdot)
