@@ -179,10 +179,10 @@ contains
        this % A(4,2) = -one       
        this % A(4,3) = one
 
-       this % B(1) = oneeigth
-       this % B(2) = 3.0d0*oneeigth
+       this % B(1) = oneeight
+       this % B(2) = 3.0d0*oneeight
        this % B(3) = this % B(2)
-       this % B(4) = oneeigth
+       this % B(4) = oneeight
 
        this % C(1) = 0.0d0
        this % C(2) = onethird
@@ -239,6 +239,13 @@ contains
        
        this % order = 2
 
+!!$       ! Implicit Euler (Backward Euler) but first order accurate
+!!$       this % A(1,1) = one
+!!$       this % B(1)   = one
+!!$       this % C(1)   = one
+!!$       this % order = 1
+       
+
     else if (this % num_stages .eq. 2) then
 
        ! Crouzeix formula (A-stable)
@@ -294,7 +301,77 @@ contains
   !-------------------------------------------------------------------!
 
   subroutine ButcherIRK(this)
+
     class(IRK) :: this
+    
+    ! put the entries into the tableau
+    if (this % num_stages .eq. 1) then 
+
+       ! Implicit mid-point rule (A-stable)
+
+       this % A(1,1) = 0.5d0
+       this % B(1)   = 1.0d0
+       this % C(1)   = 0.5d0
+
+       this % order = 2
+
+!!$       ! Implicit Euler (Backward Euler) but first order accurate
+!!$       this % A(1,1) = one
+!!$       this % B(1)   = one
+!!$       this % C(1)   = one
+!!$       this % order = 1
+
+
+    else if (this % num_stages .eq. 2) then 
+
+       ! Radau II A scheme (2 step)
+
+       this % A(1,1) = 5.0d0/12.0d0
+       this % A(2,1) = 3.0d0/4.0d0
+       this % A(1,2) = -1.0d0/12.0d0
+       this % A(2,2) = 1.0d0/4.0d0
+
+       this % B(1) = 3.0d0/4.0d0
+       this % B(2) = 1.0d0/6.0d0
+
+       this % C(1) = 1.0d0/3.0d0
+       this % C(2) = 1.0d0
+
+       this % order = 3
+
+    else if (this % num_stages .eq. 3) then 
+
+       ! Radau II A scheme (3 step)
+
+       this % A(1,1) = 11.0d0/45.0d0 - 7.0d0*sqrt(6.0d0)/360.0d0
+       this % A(2,1) = 37.0d0/225.0d0 + 169.0d0*sqrt(6.0d0)/1800.0d0
+       this % A(3,1) = 4.0d0/9.0d0 - sqrt(6.0d0)/36.0d0
+
+       this % A(1,2) = 37.0d0/225.0d0 - 169.0d0*sqrt(6.0d0)/1800.0d0
+       this % A(2,2) = 11.0d0/45.0d0 + 7.0d0*sqrt(6.0d0)/360.0d0
+       this % A(3,2) = 4.0d0/9.0d0 + sqrt(6.0d0)/36.0d0
+
+       this % A(1,3) = -2.0d0/225.0d0 + sqrt(6.0d0)/75.0d0
+       this % A(2,3) = -2.0d0/225.0d0 - sqrt(6.0d0)/75.0d0 
+       this % A(3,3) = 1.0d0/9.0d0
+
+       this % B(1) = 4.0d0/9.0d0 - sqrt(6.0d0)/36.0d0
+       this % B(2) = 4.0d0/9.0d0 + sqrt(6.0d0)/36.0d0
+       this % B(3) = 1.0d0/9.0d0
+
+       this % C(1) = 2.0d0/5.0d0 - sqrt(6.0d0)/10.0d0
+       this % C(2) = 2.0d0/5.0d0 + sqrt(6.0d0)/10.0d0
+       this % C(3) = 1.0d0
+
+       this % order = 4
+
+    else
+
+       print *, this % num_stages
+       stop "IRK Butcher tableau is not implemented for the requested order"
+
+    end if
+
   end subroutine ButcherIRK
 
   !-------------------------------------------------------------------!
