@@ -27,6 +27,7 @@ module runge_kutta_class
      ! put all the common procedures
      procedure(integrate_interface), deferred :: integrate
      procedure :: init, finalize
+     procedure :: update_states
 
   end type RK
 
@@ -54,10 +55,9 @@ module runge_kutta_class
 
    contains
 
-     procedure :: integrate
+     procedure :: integrate => integrate
      procedure :: get_first_stage_deriv
      procedure :: get_approx_q
-     procedure :: update_states
      procedure :: newton_solve
 
      !procedure :: get_second_stage_deriv
@@ -149,26 +149,7 @@ contains
     
   end function residual
 
-  subroutine update_states(this, k, q, ydot, qdot, yddot)
-
-    class(dirk) :: this
-    integer, intent(in) :: k ! current time step
-    real(8), intent(inout), dimension(:) :: q ! actual states
-    real(8), intent(in), dimension(:) :: ydot ! first stage derivative
-    real(8), OPTIONAL, intent(inout), dimension(:) :: qdot ! actual state
-    real(8), OPTIONAL, intent(in), dimension(:) :: yddot ! second stage derivative
-
-    ! update q (for first order ODE)
-    q(k) = q(k-1) + this % h*sum(this % B(:)*ydot(:))
-    
-    ! update qdot (for second order ODE)
-    if (present(qdot) .and. present(yddot))then
-       qdot(k) = qdot(k-1) + this % h*sum(this % B(:)*yddot(:))
-    end if
-
-  end subroutine update_states
-
-  !-------------------------------------------------------------------!
+   !-------------------------------------------------------------------!
   ! Get the stage derivatives by solving the nonlinear system using
   ! Newton's method
   !-------------------------------------------------------------------!
@@ -242,6 +223,25 @@ contains
     if(allocated(this % C)) deallocate(this % C)
 
   end subroutine finalize
+
+ subroutine update_states(this, k, q, ydot, qdot, yddot)
+
+    class(RK) :: this
+    integer, intent(in) :: k ! current time step
+    real(8), intent(inout), dimension(:) :: q ! actual states
+    real(8), intent(in), dimension(:) :: ydot ! first stage derivative
+    real(8), OPTIONAL, intent(inout), dimension(:) :: qdot ! actual state
+    real(8), OPTIONAL, intent(in), dimension(:) :: yddot ! second stage derivative
+
+    ! update q (for first order ODE)
+    q(k) = q(k-1) + this % h*sum(this % B(:)*ydot(:))
+    
+    ! update qdot (for second order ODE)
+    if (present(qdot) .and. present(yddot))then
+       qdot(k) = qdot(k-1) + this % h*sum(this % B(:)*yddot(:))
+    end if
+
+  end subroutine update_states
 
 end module runge_kutta_class
 
