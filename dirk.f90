@@ -21,6 +21,7 @@ module runge_kutta_class
      real(8) :: h = 0.1d0       ! default step size ( will reconsider
                                 ! when implementing adaptive step
                                 ! size)
+     integer :: order           ! order of accuracy
      real(8), dimension(:,:), allocatable :: A ! forms the coeff matrix
      real(8), dimension(:)  , allocatable :: B ! multiplies the state derivatives
      real(8), dimension(:)  , allocatable :: C ! multiplies the time
@@ -119,14 +120,59 @@ contains
   subroutine ButcherDIRK(this)
 
     class(DIRK) :: this
+    real(8), parameter :: PI = 22.0d0/7.0d0
+    real(8), parameter :: tmp  = 1.0d0/(2.0d0*sqrt(3.0d0))
+    real(8), parameter :: half = 1.0d0/2.0d0
+    real(8), parameter :: one  = 1.0d0/2.0d0  
+    real(8), parameter :: alpha = 2.0d0*cos(PI/18.0d0)/sqrt(3.0d0)
 
     ! put the entries into the tableau
     if (this % num_stages .eq. 1) then 
-       this % A(1,1) = 0.5d0
-       this % B(1)   = 1.0d0
-       this % C(1)   = 0.5d0
+
+       this % A(1,1) = half
+       this % B(1)   = one
+       this % C(1)   = half
+       
+       this % order = 2
+
+    else if (this % num_stages .eq. 2) then
+
+       this % A(1,1) = half + tmp
+       this % A(2,2) = this % A(1,1)
+       this % A(1,2) = -one/sqrt(3.0d0)
+
+       this % B(1)   = half
+       this % B(2)   = half
+
+       this % C(1)   = half + tmp
+       this % C(2)   = half - tmp
+
+       this % order = 3
+
+    else if (this % num_stages .eq. 3) then
+
+       this % A(1,1) = (one+alpha)*half
+       this % A(2,2) = this % A(1,1)
+       this % A(3,3) = this % A(1,1)
+       this % A(1,2) = -half*alpha
+       this % A(1,3) =  one + alpha
+       this % A(3,2) = -(one + 2.0d0*alpha)
+       
+       this % B(1)   = one/(6.0d0*alpha**2)
+       this % B(2)   = one - one/(3.0d0*alpha**2)
+       this % B(3)   = this % B(1)
+
+       this % C(1) = (one + alpha)*half
+       this % C(2) = half
+       this % C(3) = (one - alpha)*half
+       
+       this % order = 4
+
     else
-       stop"yet to add entries into the tableau"
+       
+       print *, this % num_stages
+       stop "Butcher tableau is not implemented for the requested order"
+
     end if
 
   end subroutine ButcherDIRK
@@ -303,8 +349,13 @@ contains
     
     ! allocate space for the tableau
     allocate(this % A(this % num_stages, this % num_stages))
+    this % A = 0.0d0
+
     allocate(this % B(this % num_stages))    
+    this % B = 0.0d0
+
     allocate(this % C(this % num_stages))
+    this % C = 0.0d0
 
     call this % setup_butcher_tableau()
 
