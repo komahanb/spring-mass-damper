@@ -13,23 +13,7 @@ module runge_kutta_class
 
   ! Abstract Runge-Kutta type
   type, abstract :: RK
-
-   contains
-     ! put all the common procedures
-     ! procedure :: integrate
-  end type RK
-
-  ! Explicit Runge-Kutta
-  type, extends(RK) :: ERK
-  end type ERK
-
-  ! Implicit Runge-Kutta  
-  type, extends(RK) :: IRK
-  end type IRK
-  
-  ! Diagonally implicit Runge-Kutta
-  type, extends(RK) :: DIRK
-
+     
      integer :: num_stages = 1 ! default number of stages
      real(8) :: h = 0.1d0       ! default step size ( will reconsider
                                 ! when implementing adaptive step
@@ -40,8 +24,37 @@ module runge_kutta_class
 
    contains
 
-     procedure :: integrate
+     ! put all the common procedures
+     procedure(integrate_interface), deferred :: integrate
      procedure :: init, finalize
+
+  end type RK
+
+  ! Provide interface for integration
+  interface
+     subroutine integrate_interface(this, q, qdot, N)
+       import RK
+       class(RK) :: this
+       real(8), intent(inout), dimension(:) :: q, qdot
+       integer, intent(in) :: N 
+     end subroutine integrate_interface
+  end interface
+
+  ! Explicit Runge-Kutta
+  type, abstract, extends(RK) :: ERK
+  end type ERK
+
+  ! Implicit Runge-Kutta  
+  type, abstract, extends(RK) :: IRK
+  end type IRK
+  
+  ! Diagonally implicit Runge-Kutta
+  type, abstract, extends(RK) :: DIRK
+
+
+   contains
+
+     procedure :: integrate
      procedure :: get_first_stage_deriv
      procedure :: get_approx_q
      procedure :: update_states
@@ -193,7 +206,7 @@ contains
   ! Initialize the dirk datatype and construct the tableau
   subroutine init(this, num_stages, h)
 
-    class(dirk) :: this
+    class(rk) :: this
     integer, OPTIONAL, intent(in) :: num_stages
     real(8), OPTIONAL, intent(in) :: h
 
@@ -222,7 +235,7 @@ contains
   ! Deallocate the tableau entries
   subroutine finalize(this)
 
-    class(dirk) :: this
+    class(rk) :: this
 
     if(allocated(this % A)) deallocate(this % A)
     if(allocated(this % B)) deallocate(this % B)
@@ -238,7 +251,7 @@ program main
 
   implicit none
 
-  type(DIRK) :: dirk1, dirk2
+!  type(DIRK) :: dirk1, dirk2
   real(8) :: h = 1.0d-2
 
   !real :: a(3), b(3)
@@ -249,12 +262,12 @@ program main
   print *, "Beginning execution"
   
   ! Initialize DIRK instance and create the Butcher tableau
-  call dirk1 % init()
+ ! call dirk1 % init()
   
   ! call dirk % integrate()
 
   ! Deallocate the Butcher tableau
-  call dirk1 % finalize()
+  ! call dirk1 % finalize()
 
   print *, "Executing complete"
 
