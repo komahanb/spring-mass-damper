@@ -26,6 +26,7 @@ module runge_kutta_class
 
      ! put all the common procedures
      procedure(integrate_interface), deferred :: integrate
+     procedure(buthcher_interface), deferred  :: setup_butcher_tableau
      procedure :: init, finalize
      procedure :: update_states
 
@@ -33,29 +34,35 @@ module runge_kutta_class
 
   ! Provide interface for integration
   interface
+
      subroutine integrate_interface(this, q, qdot, N)
        import RK
        class(RK) :: this
        real(8), intent(inout), dimension(:) :: q, qdot
        integer, intent(in) :: N 
      end subroutine integrate_interface
-  end interface
 
+     subroutine buthcher_interface(this)
+       import RK
+       class(RK) :: this
+     end subroutine buthcher_interface
+     
+  end interface
+  
   ! Explicit Runge-Kutta
   type, abstract, extends(RK) :: ERK
+     
+   contains
+     procedure :: setup_butcher_tableau => ButcherERK
   end type ERK
 
-  ! Implicit Runge-Kutta  
-  type, abstract, extends(RK) :: IRK
-  end type IRK
-  
   ! Diagonally implicit Runge-Kutta
   type, abstract, extends(RK) :: DIRK
-
 
    contains
 
      procedure :: integrate => integrate
+     procedure :: setup_butcher_tableau => ButcherDIRK
      procedure :: get_first_stage_deriv
      procedure :: get_approx_q
      procedure :: newton_solve
@@ -65,8 +72,48 @@ module runge_kutta_class
 
   end type DIRK
 
+  ! Implicit Runge-Kutta  
+  type, abstract, extends(DIRK) :: IRK
+   contains
+     procedure :: setup_butcher_tableau => ButcherIRK
+  end type IRK
+  
 contains
 
+  subroutine ButcherERK(this)
+    class(ERK) :: this
+  end subroutine ButcherERK
+    subroutine ButcherIRK(this)
+    class(IRK) :: this
+  end subroutine ButcherIRK
+
+  subroutine ButcherDIRK(this)
+
+    class(DIRK) :: this
+
+    ! put the entries into the tableau
+    if (this % num_stages .eq. 1) then 
+       this % A(1,1) = 0.5d0
+       this % B(1)   = 1.0d0
+       this % C(1)   = 0.5d0
+    else
+       stop"yet to add entries into the tableau"
+    end if
+
+  end subroutine ButcherDIRK
+
+  subroutine IntegrateERK(this, q, qdot, N)
+
+    class(ERK) :: this
+    real(8), intent(inout), dimension(:) :: q, qdot
+    integer, intent(in) :: N 
+
+    real(8) :: time(10)
+    real(8) :: ydot(this % num_stages) ! stage derivatives
+    integer :: k
+
+  end subroutine IntegrateERK
+    
   !--------------------------------------------------------------------!
   ! Procedure that will be called by the end user to march in time
   ! Input: 
@@ -202,15 +249,8 @@ contains
     allocate(this % B(this % num_stages))    
     allocate(this % C(this % num_stages))
 
-    ! put the entries into the tableau
-    if (this % num_stages .eq. 1) then 
-       this % A(1,1) = 0.5d0
-       this % B(1)   = 1.0d0
-       this % C(1)   = 0.5d0
-    else
-       stop"yet to add entries into the tableau"
-    end if
-    
+    call this % setup_butcher_tableau()
+
   end subroutine init
 
   ! Deallocate the tableau entries
