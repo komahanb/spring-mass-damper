@@ -30,7 +30,7 @@ module runge_kutta_class
      ! put all the common procedures
      procedure(integrate_interface), deferred :: integrate
      procedure(buthcher_interface), deferred  :: setup_butcher_tableau
-     procedure :: init, finalize
+     procedure :: initialize, finalize
      procedure :: update_states
 
   end type RK
@@ -289,7 +289,7 @@ contains
   ! Initialize the dirk datatype and construct the tableau
   !-------------------------------------------------------------------!
 
-  subroutine init(this, num_stages, h)
+  subroutine initialize(this, num_stages, h)
 
     class(rk) :: this
     integer, OPTIONAL, intent(in) :: num_stages
@@ -308,7 +308,7 @@ contains
 
     call this % setup_butcher_tableau()
 
-  end subroutine init
+  end subroutine initialize
 
   !-------------------------------------------------------------------!
   ! Deallocate the tableau entries
@@ -370,17 +370,17 @@ program main
   q(1) = 1.0
 
   print *, " > Explicit Runge Kutta"
-  call ERK1  % init()
+  call ERK1  % initialize()
   call ERK1  % integrate(q, qdot, N)
   call ERK1  % finalize()
   
   print *, " > Implicit Runge Kutta"
-  call IRK1  % init()
+  call IRK1  % initialize()
   call IRK1  % integrate(q, qdot, N)
   call IRK1  % finalize()
 
   print *, " > Diagonally-Implicit Runge Kutta"
-  call DIRK1 % init()
+  call DIRK1 % initialize()
   call DIRK1 % integrate(q, qdot, N)
   call DIRK1 % finalize()
   
