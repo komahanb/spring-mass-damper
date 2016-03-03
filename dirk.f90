@@ -11,10 +11,13 @@ module runge_kutta_class
 
   public :: DIRK, IRK, ERK
 
+  !-------------------------------------------------------------------!
   ! Abstract Runge-Kutta type
+  !-------------------------------------------------------------------!
+
   type, abstract :: RK
      
-     integer :: num_stages = 1 ! default number of stages
+     integer :: num_stages = 1  ! default number of stages
      real(8) :: h = 0.1d0       ! default step size ( will reconsider
                                 ! when implementing adaptive step
                                 ! size)
@@ -31,9 +34,16 @@ module runge_kutta_class
      procedure :: update_states
 
   end type RK
+  
+  !-------------------------------------------------------------------!
+  ! Interfaces for deferred specialized procedures 
+  !-------------------------------------------------------------------!
 
-  ! Provide interface for integration
   interface
+
+     !----------------------------------------------------------------!
+     ! Interface for integration logic
+     !----------------------------------------------------------------!
 
      subroutine integrate_interface(this, q, qdot, N)
        import RK
@@ -42,40 +52,59 @@ module runge_kutta_class
        integer, intent(in) :: N 
      end subroutine integrate_interface
 
+     !----------------------------------------------------------------!
+     ! Interface for setting the Butcher tableau for each type of RK
+     ! scheme
+     !----------------------------------------------------------------!
+
      subroutine buthcher_interface(this)
        import RK
        class(RK) :: this
      end subroutine buthcher_interface
      
   end interface
-  
+
+  !------------------------------------------------------------------!  
   ! Explicit Runge-Kutta
-  type, abstract, extends(RK) :: ERK
-     
+  !------------------------------------------------------------------!  
+
+  type, extends(RK) :: ERK
+
    contains
+
+     procedure :: integrate => integrateERK
      procedure :: setup_butcher_tableau => ButcherERK
+
   end type ERK
 
+  !------------------------------------------------------------------!  
   ! Diagonally implicit Runge-Kutta
-  type, abstract, extends(RK) :: DIRK
+  !------------------------------------------------------------------!  
+
+  type, extends(RK) :: DIRK
 
    contains
 
-     procedure :: integrate => integrate
+     procedure :: integrate => integrateDIRK
      procedure :: setup_butcher_tableau => ButcherDIRK
+
      procedure :: get_first_stage_deriv
      procedure :: get_approx_q
      procedure :: newton_solve
 
-     !procedure :: get_second_stage_deriv
-     !procedure :: approx_qdot
-
   end type DIRK
 
+  !------------------------------------------------------------------!  
   ! Implicit Runge-Kutta  
+  !------------------------------------------------------------------!  
+
   type, abstract, extends(DIRK) :: IRK
+
    contains
+
+     procedure :: integrate => integrateIRK
      procedure :: setup_butcher_tableau => ButcherIRK
+
   end type IRK
   
 contains
@@ -113,7 +142,19 @@ contains
     integer :: k
 
   end subroutine IntegrateERK
-    
+
+  subroutine IntegrateIRK(this, q, qdot, N)
+
+    class(IRK) :: this
+    real(8), intent(inout), dimension(:) :: q, qdot
+    integer, intent(in) :: N 
+
+    real(8) :: time(10)
+    real(8) :: ydot(this % num_stages) ! stage derivatives
+    integer :: k
+
+  end subroutine IntegrateIRK
+
   !--------------------------------------------------------------------!
   ! Procedure that will be called by the end user to march in time
   ! Input: 
@@ -122,9 +163,9 @@ contains
   ! step size h
   !--------------------------------------------------------------------!
 
-  subroutine integrate(this, q, qdot, N)
+  subroutine IntegrateDIRK(this, q, qdot, N)
     
-    class(dirk) :: this
+    class(DIRK) :: this
 
     real(8), intent(inout), dimension(:) :: q, qdot
     real(8) :: time(10)
@@ -148,7 +189,7 @@ contains
 
     end do march
     
-  end subroutine integrate
+  end subroutine IntegrateDIRK
 
   ! Newton solve to solve the linear system to get the stage derivatives at each time step
   subroutine newton_solve(this, k, time, q, qdot, ydot)
