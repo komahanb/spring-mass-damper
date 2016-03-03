@@ -13,7 +13,7 @@ module runge_kutta_class
 
   ! Abstract Runge-Kutta type
   type, abstract :: RK
-     ! put all the common variables
+
    contains
      ! put all the common procedures
      ! procedure :: integrate
@@ -30,7 +30,7 @@ module runge_kutta_class
   ! Diagonally implicit Runge-Kutta
   type, extends(RK) :: DIRK
 
-     integer :: dirk_stages = 1 ! default number of stages
+     integer :: num_stages = 1 ! default number of stages
      real(8) :: h = 0.1d0       ! default step size ( will reconsider
                                 ! when implementing adaptive step
                                 ! size)
@@ -70,7 +70,7 @@ contains
     real(8) :: time(10)
     integer, intent(in) :: N 
     integer :: k
-    real(8) :: ydot(this % dirk_stages) ! stage derivatives
+    real(8) :: ydot(this % num_stages) ! stage derivatives
     
     ! March in time
     march: do k = 2, N + 1
@@ -80,9 +80,9 @@ contains
        time(k) = time(k-1) + this % h
        
        ! find the stage derivatives ydot
-       qdot  = q + h*c(1)*(ydot+small)
+!       qdot  = q + h*c(1)*(ydot+small)
 
-       call this % newton_solve(k, time(k), q(k), ydot(k))
+ !      call this % newton_solve(k, time(k), q(k), ydot(k))
        
        call this % update_states(k, q, ydot)
 
@@ -97,26 +97,26 @@ contains
     integer, intent(in) :: k ! current time step    
     real(8), intent(in) :: time
     real(8), intent(inout) :: q, qdot, ydot
-    real(8), dimension(this % dirk_stages) :: R ! residuals
-    real(8), dimension(this % dirk_stages, this % dirk_stages) :: dR !jacobians
+    real(8), dimension(this % num_stages) :: R ! residuals
+    real(8), dimension(this % num_stages, this % num_stages) :: dR !jacobians
     integer :: n, jj
     integer :: max_newton = 20
-    real(8) :: tmp(this % dirk_stages)
+    real(8) :: tmp(this % num_stages)
     
     newton: do n = 1, max_newton
        
        ! Make as many residual and jacobian calls as the number of stages      
-       forall(jj = 1:this % dirk_stages) &
-            & R(jj) = residual(time + this % h * C(jj), &
-            & q + this % h * this % B(jj) * ydot(jj), &
-            & qdot) !qdot or ydot
+!!$       forall(jj = 1:this % num_stages) &
+!!$            & R(jj) = residual(time + this % h * C(jj), &
+!!$            & q + this % h * this % B(jj) * ydot(jj), &
+!!$            & qdot) !qdot or ydot
        
-!!$       forall(jj = 1:this % dirk_stages) R(jj) = residual(time, q, qdot+small)
+!!$       forall(jj = 1:this % num_stages) R(jj) = residual(time, q, qdot+small)
 !!$       call residual(ydot+small, q + h*c(1)*(ydot+small), t+h*b(1), tmp)
 
        ! FD approximation of the residual
-       do jj = 1, this % dirk_stages
-          R(jj) = residual(time, q, qdot)
+       do jj = 1, this % num_stages
+!          R(jj) = residual(time, q, qdot)
        end do
 
     end do newton
@@ -163,9 +163,9 @@ contains
   function get_first_stage_deriv(this) result(ydot)
     
     class(dirk) :: this
-    real(8) :: q, qdot(this % dirk_stages)
+    real(8) :: q, qdot(this % num_stages)
     integer :: r
-    real(8) :: ydot(this % dirk_stages)
+    real(8) :: ydot(this % num_stages)
 
     ! solve the nonlinear system to get the stage derivatives
     ! call newton1(1, time(I), q(i), K(1,i), b, c)
@@ -176,14 +176,14 @@ contains
   real(8) function get_approx_q(this)
     
     class(dirk) :: this
-    real(8) :: q, qdot(this % dirk_stages)
+    real(8) :: q, qdot(this % num_stages)
     integer :: r, i, j
-    real(8) :: ydot(this % dirk_stages)
+    real(8) :: ydot(this % num_stages)
    
     ydot = this % get_first_stage_deriv()
     
-    do i = 1, this % dirk_stages
-       do  j = 1, this % dirk_stages
+    do i = 1, this % num_stages
+       do  j = 1, this % num_stages
           q = q + this % h * this % A(j,i)*ydot(j)
        end do
     end do
@@ -191,25 +191,25 @@ contains
   end function get_approx_q
 
   ! Initialize the dirk datatype and construct the tableau
-  subroutine init(this, dirk_stages, h)
+  subroutine init(this, num_stages, h)
 
     class(dirk) :: this
-    integer, OPTIONAL, intent(in) :: dirk_stages
+    integer, OPTIONAL, intent(in) :: num_stages
     real(8), OPTIONAL, intent(in) :: h
 
     ! set the order of integration
-    if (present(dirk_stages)) this % dirk_stages = dirk_stages
+    if (present(num_stages)) this % num_stages = num_stages
     
     ! set the user supplied initial step size
     if (present(h)) this % h = h 
     
     ! allocate space for the tableau
-    allocate(this % A(this % dirk_stages, this % dirk_stages))
-    allocate(this % B(this % dirk_stages))    
-    allocate(this % C(this % dirk_stages))
+    allocate(this % A(this % num_stages, this % num_stages))
+    allocate(this % B(this % num_stages))    
+    allocate(this % C(this % num_stages))
 
     ! put the entries into the tableau
-    if (this % dirk_stages .eq. 1) then 
+    if (this % num_stages .eq. 1) then 
        this % A(1,1) = 0.5d0
        this % B(1)   = 1.0d0
        this % C(1)   = 0.5d0
