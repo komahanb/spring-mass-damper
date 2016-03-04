@@ -42,13 +42,15 @@ module runge_kutta_class
    contains
 
      ! Deferred common procedures
-     procedure(integrate_interface), deferred :: integrate
      procedure(stage_derivative_interface), deferred :: get_stage_derivatives
      procedure(buthcher_interface), deferred  :: setup_butcher_tableau
 
      ! Implemented common procedures
      procedure :: initialize, finalize
      procedure :: update_states
+     procedure :: integrate
+
+     ! procedure(integrate_interface), deferred :: integrate
 
   end type RK
   
@@ -62,12 +64,12 @@ module runge_kutta_class
      ! Interface for integration logic
      !----------------------------------------------------------------!
 
-     subroutine integrate_interface(this, q, qdot, N)
-       import RK
-       class(RK) :: this
-       real(8), intent(inout), dimension(:) :: q, qdot
-       integer, intent(in) :: N 
-     end subroutine integrate_interface
+!!$     subroutine integrate_interface(this, q, qdot, N)
+!!$       import RK
+!!$       class(RK) :: this
+!!$       real(8), intent(inout), dimension(:) :: q, qdot
+!!$       integer, intent(in) :: N 
+!!$     end subroutine integrate_interface
 
      !----------------------------------------------------------------!
      ! Interface for finding the stage derivatives at each time step
@@ -100,7 +102,6 @@ module runge_kutta_class
 
    contains
 
-     procedure :: integrate => integrateERK
      procedure :: get_stage_derivatives =>get_stage_derivativesERK
      procedure :: setup_butcher_tableau => ButcherERK
 
@@ -114,7 +115,6 @@ module runge_kutta_class
 
    contains
 
-     procedure :: integrate => integrateDIRK
      procedure :: setup_butcher_tableau => ButcherDIRK
      procedure :: get_stage_derivatives =>get_stage_derivativesDIRK
 
@@ -130,7 +130,6 @@ module runge_kutta_class
 
    contains
 
-     procedure :: integrate => integrateIRK
      procedure :: setup_butcher_tableau => ButcherIRK
      procedure :: get_stage_derivatives =>get_stage_derivativesIRK
 
@@ -403,38 +402,6 @@ contains
   end subroutine ButcherIRK
 
   !-------------------------------------------------------------------!
-  ! Time integration logic for ERK
-  !-------------------------------------------------------------------!
-  ! Input: 
-  ! o state arrays q and qdot with initial conditions set at q(1)
-  ! o number of steps N
-  ! o step size h
-  !-------------------------------------------------------------------!
-  ! Output:
-  ! o q, qdot arrays are modified by the routine
-  !-------------------------------------------------------------------!
-  
-  subroutine IntegrateERK(this, q, qdot, N)
-
-    class(ERK) :: this
-    real(8), intent(inout), dimension(:) :: q, qdot
-    integer, intent(in) :: N 
-    integer :: k
-
-    ! March in time
-    march: do k = 2, N + 1
-       
-       ! find the stage derivatives at the current step
-       call this % get_stage_derivatives(k, q, qdot)
-       
-       ! advance the state to the current step
-       call this % update_states(k, q, qdot)
-
-    end do march
-
-  end subroutine IntegrateERK
-
-  !-------------------------------------------------------------------!
   ! Get the stage derivative array for the current step and states ERK
   !-------------------------------------------------------------------!
   
@@ -446,6 +413,8 @@ contains
     real(8) :: tau, Y
     integer :: j
     
+    ! Stage derivatives are explicitly found at each iteration
+
     do j = 1, this % num_stages
 
        ! stage time
@@ -471,9 +440,10 @@ contains
     integer, intent(in) :: k 
     real(8), intent(in), dimension(:) :: q, qdot
     integer :: j
+    
+    ! Stage derivatives are implicitly found at each iteration
 
   end subroutine get_stage_derivativesDIRK
-
 
   !-------------------------------------------------------------------!
   ! Get the stage derivative array for the current step and states IRK
@@ -485,52 +455,11 @@ contains
     integer, intent(in) :: k 
     real(8), intent(in), dimension(:) :: q, qdot
     integer :: j
+    
+    ! Stage derivatives are implicitly found at each iteration
 
   end subroutine get_stage_derivativesIRK
 
-  !-------------------------------------------------------------------!
-  ! Time integration logic for IRK
-  !-------------------------------------------------------------------!
-  ! Input: 
-  ! o state arrays q and qdot with initial conditions set at q(1)
-  ! o number of steps N
-  ! o step size h
-  !-------------------------------------------------------------------!
-  ! Output:
-  ! o q, qdot arrays are modified by the routine
-  !-------------------------------------------------------------------!
-
-  subroutine IntegrateIRK(this, q, qdot, N)
-
-    class(IRK) :: this
-    real(8), intent(inout), dimension(:) :: q, qdot
-    integer, intent(in) :: N 
-    integer :: k
-
-  end subroutine IntegrateIRK
-
-  !-------------------------------------------------------------------!
-  ! Time integration logic for DIRK
-  !-------------------------------------------------------------------!
-  ! Input: 
-  ! o state arrays q and qdot with initial conditions set at q(1)
-  ! o number of steps N
-  ! o step size h
-  !-------------------------------------------------------------------!
-  ! Output:
-  ! o q, qdot arrays are modified by the routine
-  !-------------------------------------------------------------------!
-
-  subroutine IntegrateDIRK(this, q, qdot, N)
-    
-    class(DIRK) :: this
-
-    real(8), intent(inout), dimension(:) :: q, qdot
-    integer, intent(in) :: N 
-    integer :: k
-   
-  end subroutine IntegrateDIRK
-  
   !-------------------------------------------------------------------!
   ! Newton solve to solve the linear system to get the stage
   ! derivatives at each time step
@@ -619,6 +548,38 @@ contains
   end subroutine finalize
 
   !-------------------------------------------------------------------!
+  ! Time integration logic
+  !-------------------------------------------------------------------!
+  ! Input: 
+  ! o state arrays q and qdot with initial conditions set at q(1)
+  ! o number of steps N
+  ! o step size h
+  !-------------------------------------------------------------------!
+  ! Output:
+  ! o q, qdot arrays are modified by the routine
+  !-------------------------------------------------------------------!
+  
+  subroutine Integrate(this, q, qdot, N)
+
+    class(RK) :: this
+    real(8), intent(inout), dimension(:) :: q, qdot
+    integer, intent(in) :: N 
+    integer :: k
+
+    ! March in time
+    march: do k = 2, N + 1
+       
+       ! find the stage derivatives at the current step
+       call this % get_stage_derivatives(k, q, qdot)
+       
+       ! advance the state to the current step
+       call this % update_states(k, q, qdot)
+
+    end do march
+
+  end subroutine Integrate
+
+  !-------------------------------------------------------------------!
   ! Update the states based on RK Formulae
   !-------------------------------------------------------------------!
   
@@ -636,6 +597,7 @@ contains
     qdot(k) = sum(this % B(:)*this % K(:))
     
   end subroutine update_states
+
 
 end module runge_kutta_class
 
