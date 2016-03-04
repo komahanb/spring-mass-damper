@@ -611,8 +611,9 @@ contains
 
     ! residual = qdot + cos(q) - sin(time)
     ! residual = qdot - cos(time)
-    !residual = cos(q) - sin(time)
+    ! residual = cos(q) - sin(time)
     residual = - sin(time)
+    ! residual = exp(time)
 
   end function residual
 
@@ -732,8 +733,8 @@ program main
 
   implicit none
 
-  integer, parameter :: N=  1000
-  real(8), parameter :: h = 1.0d-2
+  integer, parameter :: N=  100
+  real(8), parameter :: h = 1.0d-1
 
   type(DIRK) :: DIRK1
   type(IRK)  :: IRK1
@@ -749,12 +750,14 @@ program main
   q(1) = 1.0
 
  ! print *, " > Explicit Runge Kutta"
-  call ERK1  % initialize(4)
+  call ERK1  % initialize(1)
   call ERK1  % integrate(q, qdot, N)
   call ERK1  % finalize()
-
-  write (*, '(4F15.8)', advance='yes') (dble(i-1)*ERK1 % h, &
-       & (q(i)), abs(q(i)-cos(dble(i-1)*ERK1 % h)), residual(dble(i-1)*ERK1 % h, q(i), qdot(i)), i = 1, N+1)
+  
+  write (*, '(4E15.8)', advance='yes') (dble(i-1)*ERK1 % h, &
+       & (q(i)), abs(q(i)-cos(dble(i-1)*ERK1 % h)), &
+       & residual(dble(i-1)*ERK1 % h, &
+       & q(i), qdot(i)), i = 1, N+1)
   
   !print *, " > Implicit Runge Kutta"
   call IRK1  % initialize()
