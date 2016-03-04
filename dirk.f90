@@ -142,7 +142,6 @@ module runge_kutta_class
    contains
 
      procedure :: setup_butcher_tableau => ButcherIRK
-     procedure :: compute_stage_values =>compute_stage_valuesIRK
 
   end type IRK
   
@@ -477,22 +476,6 @@ contains
   end subroutine compute_stage_valuesDIRK
 
   !-------------------------------------------------------------------!
-  ! Get the stage derivative array for the current step and states IRK
-  !-------------------------------------------------------------------!
-  
-  subroutine compute_stage_valuesIRK(this, k, q)
-
-    class(IRK) :: this
-    integer, intent(in) :: k 
-    real(8), intent(in), dimension(:) :: q
-    integer :: j
-    
-    ! Stage derivatives are implicitly found at each iteration
-    ! call this % newton_solve(q(k-1))
-
-  end subroutine compute_stage_valuesIRK
-
-  !-------------------------------------------------------------------!
   ! Solve nonlinear stage equations using Newton's method at each time
   ! step
   !-------------------------------------------------------------------!
@@ -614,11 +597,6 @@ contains
   end subroutine compute_stage_jacobian
 
   !-------------------------------------------------------------------!
-  !
-  !-------------------------------------------------------------------!
-  
-
-  !-------------------------------------------------------------------!
   ! Initialize the dirk datatype and construct the tableau
   !-------------------------------------------------------------------!
 
@@ -713,10 +691,10 @@ contains
 
     ! March in time
     march: do k = 2, N + 1
-       
+
        ! find the stage derivatives at the current step
        call this % compute_stage_values(k, q)
-       
+
        ! advance the state to the current step
        call this % update_states(k, q, qdot)
 
@@ -738,11 +716,11 @@ contains
     real(8), intent(inout), dimension(:) :: q ! actual states
     real(8), intent(inout), dimension(:) :: qdot ! actual state
 
-    ! update q (for first order ODE)
-    q(k) = q(k-1) + this % h*sum(this % B(:)*this % K(:))
-    
     ! update the qdot value
     qdot(k) = sum(this % B(:)*this % K(:))
+
+    ! update q (for first order ODE)
+    q(k) = q(k-1) + this % h * qdot(k)
     
   end subroutine update_states
 
@@ -801,7 +779,7 @@ program main
 
   end do
 
-  write (*, '(4E15.8)') (norm2(error(i,:)), i = 1,4)
+  write (*, '(a,4E15.8)') "ERK :",(norm2(error(i,:)), i = 1,4)
   
   !-------------------------------------------------------------------!
   ! Implicit Runge Kutta
@@ -823,7 +801,7 @@ program main
 
   end do
 
-  write (*, '(4E15.8)') (norm2(error(i,:)), i = 1, 3)
+  write (*, '(a,4E15.8)') "IRK :", (norm2(error(i,:)), i = 1, 3)
 
   !-------------------------------------------------------------------!
   ! Diagonally Implicit Runge Kutta
@@ -845,7 +823,7 @@ program main
 
   end do
 
-  write (*, '(4E15.8)') (norm2(error(i,:)), i = 1, 3)
+  write (*, '(a,4E15.8)') "DIRK:", (norm2(error(i,:)), i = 1, 3)
 
 end program main
 
