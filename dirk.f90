@@ -9,7 +9,7 @@ module runge_kutta_class
 
   private
 
-  public :: DIRK, IRK, ERK
+  public :: DIRK, IRK, ERK, residual
 
   !-------------------------------------------------------------------!
   ! Abstract Runge-Kutta type
@@ -30,7 +30,10 @@ module runge_kutta_class
 
      ! put all the common procedures
      procedure(integrate_interface), deferred :: integrate
+     procedure(stage_derivative_interface), deferred :: get_stage_derivatives
      procedure(buthcher_interface), deferred  :: setup_butcher_tableau
+
+     ! implemented procedures
      procedure :: initialize, finalize
      procedure :: update_states
 
@@ -54,6 +57,18 @@ module runge_kutta_class
      end subroutine integrate_interface
 
      !----------------------------------------------------------------!
+     ! Interface for finding the stage derivatives at each time step
+     !----------------------------------------------------------------!
+     
+     subroutine stage_derivative_interface(this, k, q, qdot, ydot)
+       import RK
+       class(RK) :: this
+       integer, intent(in) :: k 
+       real(8), intent(in), dimension(:) :: q, qdot
+       real(8), intent(out) :: ydot(this % num_stages) ! stage derivatives
+     end subroutine stage_derivative_interface
+
+     !----------------------------------------------------------------!
      ! Interface for setting the Butcher tableau for each type of RK
      ! scheme
      !----------------------------------------------------------------!
@@ -74,6 +89,7 @@ module runge_kutta_class
    contains
 
      procedure :: integrate => integrateERK
+     procedure :: get_stage_derivatives =>get_stage_derivativesERK
      procedure :: setup_butcher_tableau => ButcherERK
 
   end type ERK
@@ -88,7 +104,7 @@ module runge_kutta_class
 
      procedure :: integrate => integrateDIRK
      procedure :: setup_butcher_tableau => ButcherDIRK
-
+     procedure :: get_stage_derivatives =>get_stage_derivativesDIRK
      procedure :: get_first_stage_deriv
      procedure :: get_approx_q
      procedure :: newton_solve
@@ -105,7 +121,7 @@ module runge_kutta_class
 
      procedure :: integrate => integrateIRK
      procedure :: setup_butcher_tableau => ButcherIRK
-
+     procedure :: get_stage_derivatives =>get_stage_derivativesIRK
   end type IRK
   
 contains
@@ -125,7 +141,7 @@ contains
     real(8), parameter :: alpha = half
 
     ! put the entries into the tableau
-    if (this % num_stages .eq. 2) then 
+    if (this % num_stages .eq. 1) then 
        
        ! Explicit Euler
        
@@ -378,12 +394,12 @@ contains
   ! Time integration logic for ERK
   !-------------------------------------------------------------------!
   ! Input: 
-  ! . state arrays q and qdot with initial conditions set at q(1)
-  ! . number of steps N
-  ! . step size h
+  ! o state arrays q and qdot with initial conditions set at q(1)
+  ! o number of steps N
+  ! o step size h
   !-------------------------------------------------------------------!
   ! Output:
-  ! . q, qdot arrays are modified by the routine
+  ! o q, qdot arrays are modified by the routine
   !-------------------------------------------------------------------!
   
   subroutine IntegrateERK(this, q, qdot, N)
@@ -392,22 +408,103 @@ contains
     real(8), intent(inout), dimension(:) :: q, qdot
     integer, intent(in) :: N 
 
-    real(8) :: time(10)
     real(8) :: ydot(this % num_stages) ! stage derivatives
     integer :: k
 
+    ! March in time
+    march: do k = 2, N + 1
+       
+       ! find the stage derivatives at the current step
+       call this % get_stage_derivatives(k, q, qdot, ydot)
+
+       !       print*, "k,ydot:", k, ydot
+       
+       ! advance the state to the current step
+       call this % update_states(k, q, qdot, ydot)
+
+    end do march
+
   end subroutine IntegrateERK
+
+  !-------------------------------------------------------------------!
+  ! Get the stage derivative array for the current step and states ERK
+  !-------------------------------------------------------------------!
+  
+  subroutine get_stage_derivativesERK(this, k, q, qdot, ydot)
+
+    class(ERK) :: this
+    integer, intent(in) :: k 
+    real(8), intent(in), dimension(:) :: q, qdot
+    real(8), intent(out) :: ydot(this % num_stages) ! stage derivatives
+    integer :: j
+
+    do j = 1, this % num_stages
+       ydot(j) =  residual(&
+            & dble(k-2)*this % h + this % C(j)*this % h, &
+            & q(k-1) + sum(this % A(j,:)*ydot(:)), &
+            & qdot(k-1))
+    end do
+
+    ! drive the residual to zero and solve for the stage derivatives
+
+    
+  end subroutine get_stage_derivativesERK
+
+
+  !-------------------------------------------------------------------!
+  ! Get the stage derivative array for the current step and states DIRK
+  !-------------------------------------------------------------------!
+  
+  subroutine get_stage_derivativesDIRK(this, k, q, qdot, ydot)
+
+    class(DIRK) :: this
+    integer, intent(in) :: k 
+    real(8), intent(in), dimension(:) :: q, qdot
+    real(8), intent(out) :: ydot(this % num_stages) ! stage derivatives
+    integer :: j
+
+!!$    do j = 1, this % num_stages
+!!$       ydot(j) =  residual(&
+!!$            & dble(k-2)*this % h + this % C(j)*this % h, &
+!!$            & q(k-1) + sum(this % A(j,:)*ydot(:)), &
+!!$            & qdot(k-1))
+!!$    end do
+
+  end subroutine get_stage_derivativesDIRK
+
+
+  !-------------------------------------------------------------------!
+  ! Get the stage derivative array for the current step and states IRK
+  !-------------------------------------------------------------------!
+  
+  subroutine get_stage_derivativesIRK(this, k, q, qdot, ydot)
+
+    class(IRK) :: this
+    integer, intent(in) :: k 
+    real(8), intent(in), dimension(:) :: q, qdot
+    real(8), intent(out) :: ydot(this % num_stages) ! stage derivatives
+    integer :: j
+    
+!!$
+!!$    do j = 1, this % num_stages
+!!$       ydot(j) =  residual(&
+!!$            & dble(k-2)*this % h + this % C(j)*this % h, &
+!!$            & q(k-1) + sum(this % A(j,:)*ydot(:)), &
+!!$            & qdot(k-1))
+!!$    end do
+
+  end subroutine get_stage_derivativesIRK
 
   !-------------------------------------------------------------------!
   ! Time integration logic for IRK
   !-------------------------------------------------------------------!
   ! Input: 
-  ! . state arrays q and qdot with initial conditions set at q(1)
-  ! . number of steps N
-  ! . step size h
+  ! o state arrays q and qdot with initial conditions set at q(1)
+  ! o number of steps N
+  ! o step size h
   !-------------------------------------------------------------------!
   ! Output:
-  ! . q, qdot arrays are modified by the routine
+  ! o q, qdot arrays are modified by the routine
   !-------------------------------------------------------------------!
 
   subroutine IntegrateIRK(this, q, qdot, N)
@@ -426,12 +523,12 @@ contains
   ! Time integration logic for DIRK
   !-------------------------------------------------------------------!
   ! Input: 
-  ! . state arrays q and qdot with initial conditions set at q(1)
-  ! . number of steps N
-  ! . step size h
+  ! o state arrays q and qdot with initial conditions set at q(1)
+  ! o number of steps N
+  ! o step size h
   !-------------------------------------------------------------------!
   ! Output:
-  ! . q, qdot arrays are modified by the routine
+  ! o q, qdot arrays are modified by the routine
   !-------------------------------------------------------------------!
 
   subroutine IntegrateDIRK(this, q, qdot, N)
@@ -510,7 +607,8 @@ contains
     real(8), intent(in)  :: time
     real(8), intent(in)  :: q, qdot ! actual states
 
-    residual = qdot + cos(q) - sin(time)
+    ! residual = qdot + cos(q) - sin(time)
+    residual = qdot - cos(time)
     
   end function residual
 
@@ -600,22 +698,25 @@ contains
   ! Update the states based on RK Formulae
   !-------------------------------------------------------------------!
   
-  subroutine update_states(this, k, q, ydot, qdot, yddot)
+  subroutine update_states(this, k, q, qdot, ydot, yddot)
 
     class(RK) :: this
     integer, intent(in) :: k ! current time step
     real(8), intent(inout), dimension(:) :: q ! actual states
+    real(8), intent(inout), dimension(:) :: qdot ! actual state
     real(8), intent(in), dimension(:) :: ydot ! first stage derivative
-    real(8), OPTIONAL, intent(inout), dimension(:) :: qdot ! actual state
     real(8), OPTIONAL, intent(in), dimension(:) :: yddot ! second stage derivative
 
     ! update q (for first order ODE)
     q(k) = q(k-1) + this % h*sum(this % B(:)*ydot(:))
+    
+    ! update the qdot value
+    qdot(k) = sum(this % B(:)*ydot(:))
 
     ! update qdot (for second order ODE)
-    if (present(qdot) .and. present(yddot))then
-       qdot(k) = qdot(k-1) + this % h*sum(this % B(:)*yddot(:))
-    end if
+!    if (present(qdot) .and. present(yddot))then
+    !   qdot(k) = qdot(k-1) + this % h*sum(this % B(:)*yddot(:))
+ !   end if
 
   end subroutine update_states
 
@@ -627,7 +728,7 @@ program main
 
   implicit none
 
-  integer, parameter :: N=  100
+  integer, parameter :: N=  10
   real(8), parameter :: h = 1.0d-2
 
   type(DIRK) :: DIRK1
@@ -636,27 +737,32 @@ program main
 
   real(8) :: q(N+1) = 0.0d0, qdot(N+1) = 0.0d0
 
-  print *, "> Beginning execution"
+  integer :: i
+
+!  print *, "> Beginning execution"
 
   ! set initial condition
   q(1) = 1.0
 
-  print *, " > Explicit Runge Kutta"
-  call ERK1  % initialize()
+ ! print *, " > Explicit Runge Kutta"
+  call ERK1  % initialize(4)
   call ERK1  % integrate(q, qdot, N)
+  write (*, '(4F15.6)', advance='yes') (dble(i-1)*ERK1 % h, &
+       & (q(i)), qdot(i), residual(dble(i-1)*ERK1 % h, q(i), qdot(i)), i = 1, N+1)
+
   call ERK1  % finalize()
-  
-  print *, " > Implicit Runge Kutta"
+
+  !print *, " > Implicit Runge Kutta"
   call IRK1  % initialize()
   call IRK1  % integrate(q, qdot, N)
   call IRK1  % finalize()
 
-  print *, " > Diagonally-Implicit Runge Kutta"
+  !print *, " > Diagonally-Implicit Runge Kutta"
   call DIRK1 % initialize()
   call DIRK1 % integrate(q, qdot, N)
   call DIRK1 % finalize()
   
-  print *, "> Execution complete"
+  !print *, "> Execution complete"
 
 end program main
 
