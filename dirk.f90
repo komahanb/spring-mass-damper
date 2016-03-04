@@ -129,7 +129,7 @@ module runge_kutta_class
      procedure :: newton_solve
 
      procedure :: compute_stage_residual
-     procedure :: compute_stage_jacobian
+     procedure :: compute_stage_jacobian => compute_stage_jacobianDIRK
 
   end type DIRK
 
@@ -142,6 +142,7 @@ module runge_kutta_class
    contains
 
      procedure :: setup_butcher_tableau => ButcherIRK
+     procedure :: compute_stage_jacobian => compute_stage_jacobianIRK
 
   end type IRK
   
@@ -584,17 +585,40 @@ contains
   !          J[s x s] = [I(s)-h A(i,i) DFDY(T(i),Y(i))]
   !-------------------------------------------------------------------!
 
-  subroutine compute_stage_jacobian(this)
+  subroutine compute_stage_jacobianDIRK(this)
 
     class(DIRK) :: this
-    integer :: i
-
-    ! Jacobian is a diagonal matrix
+    integer :: i, j
+    
+    ! Jacobian is a lower triangle matrix
     do i = 1, this % num_stages
-       this % J(i,i) = 1.0d0 - this % h * this % A(i,i) * DFDY(this % T(i), this % Y(i))
+       do j = 1, i
+          this % J(j,i) = 1.0d0 - this % h * this % A(j,i) * DFDY(this % T(i), this % Y(i))
+       end do
+       !this % J(i,i) = 1.0d0 - this % h * this % A(i,i) * DFDY(this % T(i), this % Y(i))
     end do
     
-  end subroutine compute_stage_jacobian
+  end subroutine compute_stage_jacobianDIRK
+
+  !-------------------------------------------------------------------!
+  ! Computes the stage jacobian and sets into the same instance  
+  !          J[s x s] = [I(s)-h A(i,i) DFDY(T(i),Y(i))]
+  !-------------------------------------------------------------------!
+
+  subroutine compute_stage_jacobianIRK(this)
+
+    class(IRK) :: this
+    integer :: i, j
+    
+    ! Jacobian is a full matrix
+    do i = 1, this % num_stages
+       do j = 1, this % num_stages
+          this % J(j,i) = 1.0d0 - this % h * this % A(j,i) * DFDY(this % T(i), this % Y(i))
+       end do
+       !this % J(i,i) = 1.0d0 - this % h * this % A(i,i) * DFDY(this % T(i), this % Y(i))
+    end do
+    
+  end subroutine compute_stage_jacobianIRK
 
   !-------------------------------------------------------------------!
   ! Initialize the dirk datatype and construct the tableau
