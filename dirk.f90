@@ -69,17 +69,6 @@ module runge_kutta_class
   interface
 
      !----------------------------------------------------------------!
-     ! Interface for integration logic
-     !----------------------------------------------------------------!
-
-!!$     subroutine integrate_interface(this, q, qdot, N)
-!!$       import RK
-!!$       class(RK) :: this
-!!$       real(8), intent(inout), dimension(:) :: q, qdot
-!!$       integer, intent(in) :: N 
-!!$     end subroutine integrate_interface
-
-     !----------------------------------------------------------------!
      ! Interface for finding the stage derivatives at each time step
      !----------------------------------------------------------------!
      
