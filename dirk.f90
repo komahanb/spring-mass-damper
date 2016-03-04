@@ -58,8 +58,6 @@ module runge_kutta_class
      procedure :: integrate
      procedure :: reset_stage_values
 
-     ! procedure(integrate_interface), deferred :: integrate
-
   end type RK
   
   !-------------------------------------------------------------------!
@@ -585,7 +583,8 @@ contains
        ! Jacobian is a lower triangle matrix
        do i = 1, this % num_stages
           do j = 1, i
-             this % J(j,i) = 1.0d0 - this % h * this % A(j,i) * DFDY(this % T(i), this % Y(i))
+             this % J(j,i) = 1.0d0 - this % h * this % A(j,i) &
+                  &* DFDY(this % T(i), this % Y(i))
           end do
        end do
 
@@ -594,13 +593,15 @@ contains
        ! Jacobian is a FULL  matrix
        do i = 1, this % num_stages
           do j = 1, this % num_stages
-             this % J(j,i) = 1.0d0 - this % h * this % A(j,i) * DFDY(this % T(i), this % Y(i))
+             this % J(j,i) = 1.0d0 - this % h * this % A(j,i) &
+                  &* DFDY(this % T(i), this % Y(i))
           end do
        end do
 
     end select
 
-    !this % J(i,i) = 1.0d0 - this % h * this % A(i,i) * DFDY(this % T(i), this % Y(i))
+    !this % J(i,i) = 1.0d0 - this % h * this % A(i,i)
+    !* DFDY(this % T(i), this % Y(i))
     
   end subroutine compute_stage_jacobian
 
