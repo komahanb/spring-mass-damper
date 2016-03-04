@@ -38,8 +38,10 @@ module runge_kutta_class
      real(8), dimension(:)  , allocatable :: B ! multiplies the state derivatives
      real(8), dimension(:)  , allocatable :: C ! multiplies the time
 
-     ! The stage derivatives
-     real(8), dimension(:)  , allocatable :: K ! the stage derivatives
+     ! The stage time and its corresponding derivatives
+     real(8), dimension(:)  , allocatable :: T ! the corresponding stage time
+     real(8), dimension(:)  , allocatable :: Y ! the corresponding state
+     real(8), dimension(:)  , allocatable :: K ! the stage derivatives K = F(T,Y)
 
    contains
 
@@ -412,7 +414,7 @@ contains
     class(ERK) :: this
     integer, intent(in) :: k 
     real(8), intent(in), dimension(:) :: q, qdot
-    real(8) :: tau, Y
+    real(8) :: Y
     integer :: j
     
     ! Stage derivatives are explicitly found at each iteration
@@ -420,13 +422,13 @@ contains
     do j = 1, this % num_stages
 
        ! stage time
-       tau = dble(k-2)*this % h + this % C(j)*this % h
+       this % T(j) = dble(k-2)*this % h + this % C(j)*this % h
 
-       ! state q
-       Y = q(k-1) + this % h*sum(this % A(j,:)*this % K(:))
+       ! stage Y
+       this % Y(j) = q(k-1) + this % h*sum(this % A(j,:)*this % K(:))
        
-       !qdot = f(t,q)
-       this % K(j) =  F(tau, Y)
+       ! stage derivative
+       this % K(j) =  F(this % T(j), this % Y(j))
 
     end do
     
@@ -442,8 +444,20 @@ contains
     integer, intent(in) :: k 
     real(8), intent(in), dimension(:) :: q, qdot
     integer :: j
-    
+
     ! Stage derivatives are implicitly found at each iteration
+!!$
+!!$    do j = 1, this % num_stages
+!!$
+!!$       ! stage time
+!!$       tau = dble(k-2)*this % h + this % C(j)*this % h
+!!$
+!!$       ! state q
+!!$       Y = q(k-1) + this % h*sum(this % A(j,:)*this % K(:))
+!!$
+!!$       call newton_solve(k, tau, Y, this % K(j))
+!!$
+!!$    end do
 
   end subroutine get_stage_derivativesDIRK
 
@@ -467,12 +481,12 @@ contains
   ! derivatives at each time step
   !-------------------------------------------------------------------!
 
-  subroutine newton_solve(this, k, time, q, qdot)
+  subroutine newton_solve(this, k, time, q, ydot)
     
     class(dirk) :: this
     integer, intent(in) :: k ! current time step    
     real(8), intent(in) :: time
-    real(8), intent(inout) :: q, qdot
+    real(8), intent(inout) :: q, ydot
 
     real(8) :: JAC, RES
     real(8) :: dQ = 0.0d0
@@ -586,7 +600,15 @@ contains
     ! allocate space for the stage derivatives
     allocate(this % K(this % num_stages))
     this % K = 0.0d0
-    
+
+    ! allocate space for the stage state
+    allocate(this % Y(this % num_stages))
+    this % Y = 0.0d0
+
+    ! allocate space for the stage time
+    allocate(this % T(this % num_stages))
+    this % T = 0.0d0
+
     call this % setup_butcher_tableau()
 
   end subroutine initialize
@@ -599,10 +621,15 @@ contains
 
     class(rk) :: this
 
+    ! clear butcher's tableau
     if(allocated(this % A)) deallocate(this % A)
     if(allocated(this % B)) deallocate(this % B)
     if(allocated(this % C)) deallocate(this % C)
+
+    ! clear stage values
     if(allocated(this % K)) deallocate(this % K)
+    if(allocated(this % T)) deallocate(this % T)
+    if(allocated(this % Y)) deallocate(this % Y)
 
   end subroutine finalize
 
@@ -675,7 +702,7 @@ program main
   
   real(8) :: q(4, N+1) = 0.0d0, qdot(4, N+1) = 0.0d0, error(4, N+1) = 0.0d0
   integer :: i, kk
-  
+ 
   !-------------------------------------------------------------------!
   ! Explicit Runge Kutta
   !-------------------------------------------------------------------!
@@ -719,7 +746,7 @@ program main
   end do
 
   write (*, '(4E15.8)') (norm2(error(i,:)), i = 1, 3)
-  
+
   !-------------------------------------------------------------------!
   ! Diagonally Implicit Runge Kutta
   !-------------------------------------------------------------------!
