@@ -46,7 +46,7 @@ module runge_kutta_class
    contains
 
      ! Deferred common procedures
-     procedure(stage_derivative_interface), deferred :: get_stage_derivatives
+     procedure(stage_derivative_interface), deferred :: set_stage_values
      procedure(buthcher_interface), deferred  :: setup_butcher_tableau
 
      ! Implemented common procedures
@@ -106,7 +106,7 @@ module runge_kutta_class
 
    contains
 
-     procedure :: get_stage_derivatives =>get_stage_derivativesERK
+     procedure :: set_stage_values =>set_stage_valuesERK
      procedure :: setup_butcher_tableau => ButcherERK
 
   end type ERK
@@ -120,7 +120,7 @@ module runge_kutta_class
    contains
 
      procedure :: setup_butcher_tableau => ButcherDIRK
-     procedure :: get_stage_derivatives =>get_stage_derivativesDIRK
+     procedure :: set_stage_values =>set_stage_valuesDIRK
 
      procedure :: newton_solve
 
@@ -135,7 +135,7 @@ module runge_kutta_class
    contains
 
      procedure :: setup_butcher_tableau => ButcherIRK
-     procedure :: get_stage_derivatives =>get_stage_derivativesIRK
+     procedure :: set_stage_values =>set_stage_valuesIRK
 
   end type IRK
   
@@ -409,7 +409,7 @@ contains
   ! Get the stage derivative array for the current step and states ERK
   !-------------------------------------------------------------------!
   
-  subroutine get_stage_derivativesERK(this, k, q, qdot)
+  subroutine set_stage_valuesERK(this, k, q, qdot)
 
     class(ERK) :: this
     integer, intent(in) :: k 
@@ -432,13 +432,13 @@ contains
 
     end do
     
-  end subroutine get_stage_derivativesERK
+  end subroutine set_stage_valuesERK
 
   !-------------------------------------------------------------------!
   ! Get the stage derivative array for the current step and states DIRK
   !-------------------------------------------------------------------!
   
-  subroutine get_stage_derivativesDIRK(this, k, q, qdot)
+  subroutine set_stage_valuesDIRK(this, k, q, qdot)
 
     class(DIRK) :: this
     integer, intent(in) :: k 
@@ -459,13 +459,13 @@ contains
 !!$
 !!$    end do
 
-  end subroutine get_stage_derivativesDIRK
+  end subroutine set_stage_valuesDIRK
 
   !-------------------------------------------------------------------!
   ! Get the stage derivative array for the current step and states IRK
   !-------------------------------------------------------------------!
   
-  subroutine get_stage_derivativesIRK(this, k, q, qdot)
+  subroutine set_stage_valuesIRK(this, k, q, qdot)
 
     class(IRK) :: this
     integer, intent(in) :: k 
@@ -474,7 +474,7 @@ contains
     
     ! Stage derivatives are implicitly found at each iteration
 
-  end subroutine get_stage_derivativesIRK
+  end subroutine set_stage_valuesIRK
 
   !-------------------------------------------------------------------!
   ! Newton solve to solve the linear system to get the stage
@@ -656,7 +656,7 @@ contains
     march: do k = 2, N + 1
        
        ! find the stage derivatives at the current step
-       call this % get_stage_derivatives(k, q, qdot)
+       call this % set_stage_values(k, q, qdot)
        
        ! advance the state to the current step
        call this % update_states(k, q, qdot)
