@@ -384,7 +384,7 @@ contains
     else
 
        print *, this % num_stages
-       stop "IRK Butcher tableau is not implemented for the requested order"
+       stop "IRK Butcher tableau is not implemented for the requested order/stage"
 
     end if
 
@@ -739,46 +739,90 @@ program main
   type(DIRK) :: DIRK1
   type(IRK)  :: IRK1
   type(ERK)  :: ERK1
-
-  real(8) :: q(N+1) = 0.0d0, qdot(N+1) = 0.0d0
-
-  integer :: i
-
-!  print *, "> Beginning execution"
-
-  ! set initial condition
-  q(1) = 1.0
-
- ! print *, " > Explicit Runge Kutta"
-  call ERK1  % initialize(1)
-  call ERK1  % integrate(q, qdot, N)
-  call ERK1  % finalize()
   
-  write (*, '(4E15.8)', advance='yes') (dble(i-1)*ERK1 % h, &
-       & (q(i)), abs(q(i)-cos(dble(i-1)*ERK1 % h)), &
-       & residual(dble(i-1)*ERK1 % h, &
-       & q(i), qdot(i)), i = 1, N+1)
+  real(8) :: q(4, N+1) = 0.0d0, qdot(4, N+1) = 0.0d0, error(4, N+1) = 0.0d0
+  integer :: i, kk
   
-  !print *, " > Implicit Runge Kutta"
-  call IRK1  % initialize()
-  call IRK1  % integrate(q, qdot, N)
-  call IRK1  % finalize()
+  !-------------------------------------------------------------------!
+  ! Explicit Runge Kutta
+  !-------------------------------------------------------------------!
 
-  !print *, " > Diagonally-Implicit Runge Kutta"
-  call DIRK1 % initialize()
-  call DIRK1 % integrate(q, qdot, N)
-  call DIRK1 % finalize()
+  q = 0.0d0; q(:,1) = 1.0
+
+  do kk = 1, 4
+
+     ! Test for each RK stage
+     call ERK1  % initialize(kk)
+     call ERK1  % integrate(q(kk,:), qdot(kk,:), N)
+     call ERK1  % finalize()
+     
+     ! Find the error
+     do i = 1, N +1
+        error(kk,i) = abs(q(kk,i) - cos(dble(i-1)*ERK1 % h))
+     end do
+
+  end do
+
+  write (*, '(4E15.8)') (norm2(error(i,:)), i = 1,4)
   
-  !print *, "> Execution complete"
+  !-------------------------------------------------------------------!
+  ! Implicit Runge Kutta
+  !-------------------------------------------------------------------!
+  
+  q= 0.0d0; q(:,1) = 1.0
+  
+  do kk = 1, 3
+
+     ! Test for each RK stage
+     call IRK1  % initialize(kk)
+     call IRK1  % integrate(q(kk,:), qdot(kk,:), N)
+     call IRK1  % finalize()
+     
+     ! Find the error
+     do i = 1, N +1
+        error(kk,i) = abs(q(kk,i) - cos(dble(i-1)*IRK1 % h))
+     end do
+
+  end do
+
+  write (*, '(4E15.8)') (norm2(error(i,:)), i = 1, 3)
+  
+  !-------------------------------------------------------------------!
+  ! Diagonally Implicit Runge Kutta
+  !-------------------------------------------------------------------!
+  
+  q= 0.0d0; q(:,1) = 1.0
+
+  do kk = 1, 3
+
+     ! Test for each RK stage
+     call DIRK1  % initialize(kk)
+     call DIRK1  % integrate(q(kk,:), qdot(kk,:), N)
+     call DIRK1  % finalize()
+
+     ! Find the error
+     do i = 1, N +1
+        error(kk,i) = abs(q(kk,i) - cos(dble(i-1)*DIRK1 % h))
+     end do
+
+  end do
+
+  write (*, '(4E15.8)') (norm2(error(i,:)), i = 1, 3)
 
 end program main
 
-
-
-
-
-
-
-
-
-
+!!$ 
+!!$  write (*, '(4E15.8)', advance='yes') (dble(i-1)*ERK1 % h, &
+!!$       & (q(i)), abs(q(i)-cos(dble(i-1)*ERK1 % h)), &
+!!$       & residual(dble(i-1)*ERK1 % h, &
+!!$       & q(i), qdot(i)), i = 1, N+1)
+!!$  
+  !print *, " > Implicit Runge Kutta"
+!!$  call IRK1  % initialize()
+!!$  call IRK1  % integrate(q, qdot, N)
+!!$  call IRK1  % finalize()
+!!$
+!!$  !print *, " > Diagonally-Implicit Runge Kutta"
+!!$  call DIRK1 % initialize()
+!!$  call DIRK1 % integrate(q, qdot, N)
+!!$  call DIRK1 % finalize()
