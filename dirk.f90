@@ -53,6 +53,7 @@ module runge_kutta_class
      procedure :: initialize, finalize
      procedure :: update_states
      procedure :: integrate
+     procedure :: reset_stage_values
 
      ! procedure(integrate_interface), deferred :: integrate
 
@@ -426,7 +427,7 @@ contains
 
        ! stage Y
        this % Y(j) = q(k-1) + this % h*sum(this % A(j,:)*this % K(:))
-       
+
        ! stage derivative
        this % K(j) =  F(this % T(j), this % Y(j))
 
@@ -661,6 +662,9 @@ contains
        ! advance the state to the current step
        call this % update_states(k, q, qdot)
 
+       ! set the stage values to zero
+       call this % reset_stage_values()
+
     end do march
 
   end subroutine Integrate
@@ -684,6 +688,19 @@ contains
     
   end subroutine update_states
 
+  !-------------------------------------------------------------------!
+  ! Reset the array to store new stage values at each time step
+  !-------------------------------------------------------------------!
+  
+  subroutine reset_stage_values(this)
+
+    class(RK) :: this
+
+    this % K = 0.0d0
+    this % Y = 0.0d0
+    this % T = 0.0d0
+
+  end subroutine reset_stage_values
 
 end module runge_kutta_class
 
