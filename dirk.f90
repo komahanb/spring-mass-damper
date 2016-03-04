@@ -473,21 +473,38 @@ contains
     integer, intent(in) :: k ! current time step    
     real(8), intent(in) :: time
     real(8), intent(inout) :: q, qdot
+
     real(8) :: JAC, RES
+    real(8) :: dQ = 0.0d0
     integer :: max_newton = 20
     integer :: n, jj
+    integer :: ipiv(this%num_stages), info
+    logical :: conv = .false.
 
     newton: do n = 1, max_newton
 
        ! Get the residual of the function
-
-       ! Get the jacobian matrix
+       res = F(time, q)
        
-       JAC = JAC_DIRK(this % h, this % A(1,1), time, q)
+       ! Get the jacobian matrix
+       jac = JAC_DIRK(this % h, this % A(1,1), time, q)
 
-       !I - this % h * this % A(,i)*dF/dq
+       ! find the update
+       dq  = -res/jac
+       
+       ! check stop (change this to norm2 when implementing
+       ! multivariate case)
+       if(abs(res) .le. 1.0d-12 .or. abs(dq) .le. 1.0d-12) then
+          conv = .true.
+          exit newton
+       end if
+       
+       ! update q
+       q = q + dQ
        
     end do newton
+
+    if (.not.conv) print *, "Newton solve failed after", n
 
   end subroutine newton_solve
   
