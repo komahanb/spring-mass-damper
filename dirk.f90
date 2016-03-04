@@ -515,7 +515,7 @@ contains
     real(8), intent(in)  :: time
     real(8), intent(in)  :: q
 
-    F = - sin(time)
+    F = exp(time)
     
     ! F = qdot + cos(q) - sin(time)
     ! F = qdot - cos(time)
@@ -758,8 +758,8 @@ program main
 
   implicit none
 
-  integer, parameter :: N = 100
-  real(8), parameter :: h = 1.0d-1
+  integer, parameter :: N = 10
+  real(8), parameter :: h = 1.0d1
 
   type(DIRK) :: DIRKOBJ
   type(IRK)  :: IRKOBJ
@@ -783,7 +783,7 @@ program main
      
      ! Find the error
      do i = 1, N +1
-        error(kk,i) = abs(q(kk,i) - cos(dble(i-1)*ERKOBJ % h))
+        error(kk,i) = abs(q(kk,i) - exp(dble(i-1)*ERKOBJ % h))
      end do
 
   end do
@@ -805,7 +805,7 @@ program main
      
      ! Find the error
      do i = 1, N +1
-        error(kk,i) = abs(q(kk,i) - cos(dble(i-1)*IRKOBJ % h))
+        error(kk,i) = abs(q(kk,i) - exp(dble(i-1)*IRKOBJ % h))
      end do
 
   end do
@@ -827,7 +827,7 @@ program main
 
      ! Find the error
      do i = 1, N +1
-        error(kk,i) = abs(q(kk,i) - cos(dble(i-1)*DIRKOBJ % h))
+        error(kk,i) = abs(q(kk,i) - exp(dble(i-1)*DIRKOBJ % h))
      end do
 
   end do
