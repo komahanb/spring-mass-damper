@@ -43,6 +43,9 @@ module runge_kutta_class
      real(8), dimension(:)  , allocatable :: Y ! the corresponding state
      real(8), dimension(:)  , allocatable :: K ! the stage derivatives K = F(T,Y)
 
+     real(8), dimension(:)  , allocatable :: R ! stage residual
+     real(8), dimension(:,:), allocatable :: J ! stage jacobian
+          
    contains
 
      ! Deferred common procedures
@@ -124,6 +127,9 @@ module runge_kutta_class
      procedure :: compute_stage_values =>compute_stage_valuesDIRK
 
      procedure :: newton_solve
+
+     procedure :: compute_stage_residual
+     procedure :: compute_stage_jacobian
 
   end type DIRK
 
@@ -483,44 +489,45 @@ contains
   end subroutine compute_stage_valuesIRK
 
   !-------------------------------------------------------------------!
-  ! Newton solve to solve the linear system to get the stage
-  ! derivatives at each time step
+  ! Solve nonlinear stage equations using Newton's method at each time
+  ! step
   !-------------------------------------------------------------------!
 
-  subroutine newton_solve(this, k, time, q, ydot)
+  subroutine newton_solve(this, qk)
     
     class(dirk) :: this
-    integer, intent(in) :: k ! current time step    
-    real(8), intent(in) :: time
-    real(8), intent(inout) :: q, ydot
-
-    real(8) :: JAC, RES
-    real(8) :: dQ = 0.0d0
+    real(8), intent(in) :: qk
+    real(8) :: dQ(this % num_stages)
     integer :: max_newton = 20
     integer :: n, jj
     integer :: ipiv(this%num_stages), info
     logical :: conv = .false.
+    
+    ! initial starting point for stage derivatives
+    this % K = 0.0d0
 
     newton: do n = 1, max_newton
-
+       
        ! Get the residual of the function
-       res = F(time, q)
+       call this % compute_stage_residual(qk)
        
        ! Get the jacobian matrix
-       jac = JAC_DIRK(this % h, this % A(1,1), time, q)
+       call this % compute_stage_jacobian()
 
-       ! find the update
-       dq  = -res/jac
-       
+       ! call lapack to solve the system
+       dq = - this % R
+       call DGESV(this % num_stages, 1, this % J, this % num_stages, &
+            & IPIV, dq, this % num_stages, INFO)
+
        ! check stop (change this to norm2 when implementing
        ! multivariate case)
-       if(abs(res) .le. 1.0d-12 .or. abs(dq) .le. 1.0d-12) then
+       if(norm2(this % R) .le. 1.0d-12 .or. norm2(dq) .le. 1.0d-12) then
           conv = .true.
           exit newton
        end if
        
        ! update q
-       q = q + dQ
+       this % K = this % K + dQ
        
     end do newton
 
@@ -547,35 +554,63 @@ contains
   end function F
   
   !-------------------------------------------------------------------!
-  ! DFDQ of the function
+  ! DFDY of the function
   !-------------------------------------------------------------------!
 
-  real(8) pure function DFDQ(time, q)
+  real(8) pure function DFDY(time, Y)
     
     real(8), intent(in)  :: time
-    real(8), intent(in)  :: q
+    real(8), intent(in)  :: Y
 
-    DFDQ = 0.0d0
+    DFDY = 0.0d0
     
     ! F = qdot + cos(q) - sin(time)
     ! F = qdot - cos(time)
     ! F = cos(q) - sin(time)
     ! F = exp(time)
-
-  end function DFDQ
+    
+  end function DFDY
 
   !-------------------------------------------------------------------!
-  ! Jacobian of the function => [I - h A(i,i) DFDQ]
+  ! Computes the stage residual and sets into the same instance
   !-------------------------------------------------------------------!
   
-  real(8) pure function JAC_DIRK(h, Aii, time, q)
+  subroutine compute_stage_residual(this, qk)
 
-    real(8), intent(in)  :: time, h, Aii
-    real(8), intent(in)  :: q
+    class(DIRK) :: this
+    real(8) :: qk
+    integer :: i, j
+
+    do i = 1, this % num_stages
+       !       do j = 1, this % num_stages
+       ! are we making duplicate function calls here?
+       this % R(i) = this % Y(i) - qk - this % h * this % K(i) !F(this % T(i), this % Y(i))
+       !end do
+    end do
     
-    JAC_DIRK = 1.0d0 - h * Aii * DFDQ(time, q)
+  end subroutine compute_stage_residual
+
+  !-------------------------------------------------------------------!
+  ! Computes the stage jacobian and sets into the same instance  
+  !          J[s x s] = [I(s)-h A(i,i) DFDY(T(i),Y(i))]
+  !-------------------------------------------------------------------!
+
+  subroutine compute_stage_jacobian(this)
+
+    class(DIRK) :: this
+    integer :: i
+
+    ! Jacobian is a diagonal matrix
+    do i = 1, this % num_stages
+       this % J(i,i) = 1.0d0 - this % h * this % A(i,i) * DFDY(this % T(i), this % Y(i))
+    end do
     
-  end function JAC_DIRK
+  end subroutine compute_stage_jacobian
+
+  !-------------------------------------------------------------------!
+  !
+  !-------------------------------------------------------------------!
+  
 
   !-------------------------------------------------------------------!
   ! Initialize the dirk datatype and construct the tableau
@@ -615,6 +650,14 @@ contains
     allocate(this % T(this % num_stages))
     this % T = 0.0d0
 
+    ! allocate space for the stage time
+    allocate(this % R(this % num_stages))
+    this % R = 0.0d0
+
+    ! allocate space for the stage time
+    allocate(this % J(this % num_stages, this % num_stages))
+    this % J = 0.0d0
+
     call this % setup_butcher_tableau()
 
   end subroutine initialize
@@ -637,6 +680,10 @@ contains
     if(allocated(this % T)) deallocate(this % T)
     if(allocated(this % Y)) deallocate(this % Y)
 
+    ! clear the stage residual and jacobian
+    if(allocated(this % R)) deallocate(this % R)
+    if(allocated(this % J)) deallocate(this % J)
+    
   end subroutine finalize
 
   !-------------------------------------------------------------------!
@@ -704,6 +751,9 @@ contains
     this % K = 0.0d0
     this % Y = 0.0d0
     this % T = 0.0d0
+
+    this % R = 0.0d0
+    this % J = 0.0d0
 
   end subroutine reset_stage_values
 
