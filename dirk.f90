@@ -46,7 +46,7 @@ module runge_kutta_class
    contains
 
      ! Deferred common procedures
-     procedure(stage_derivative_interface), deferred :: set_stage_values
+     procedure(set_stage_values_interface), deferred :: set_stage_values
      procedure(buthcher_interface), deferred  :: setup_butcher_tableau
 
      ! Implemented common procedures
@@ -80,12 +80,12 @@ module runge_kutta_class
      ! Interface for finding the stage derivatives at each time step
      !----------------------------------------------------------------!
      
-     subroutine stage_derivative_interface(this, k, q, qdot)
+     subroutine set_stage_values_interface(this, k, q)
        import RK
        class(RK) :: this
        integer, intent(in) :: k 
-       real(8), intent(in), dimension(:) :: q, qdot
-     end subroutine stage_derivative_interface
+       real(8), intent(in), dimension(:) :: q
+     end subroutine set_stage_values_interface
 
      !----------------------------------------------------------------!
      ! Interface for setting the Butcher tableau for each type of RK
@@ -410,13 +410,13 @@ contains
   ! Get the stage derivative array for the current step and states ERK
   !-------------------------------------------------------------------!
   
-  subroutine set_stage_valuesERK(this, k, q, qdot)
+  subroutine set_stage_valuesERK(this, k, q)
 
     class(ERK) :: this
     integer, intent(in) :: k 
-    real(8), intent(in), dimension(:) :: q, qdot
-    real(8) :: Y
-    integer :: j
+    real(8), intent(in), dimension(:) :: q
+    real(8) :: tmp
+    integer :: j, i 
     
     ! Stage derivatives are explicitly found at each iteration
 
@@ -426,7 +426,12 @@ contains
        this % T(j) = dble(k-2)*this % h + this % C(j)*this % h
 
        ! stage Y
-       this % Y(j) = q(k-1) + this % h*sum(this % A(j,:)*this % K(:))
+       !this % Y(j) = q(k-1) + this % h*sum(this % A(j,:)*this % K(:))
+       tmp = 0.0d0
+       do i = 1, j - 1
+          tmp = tmp + this % A(j,i)*this % K(j)
+       end do
+       this % Y(j) = q(k-1) +  this % h * tmp
 
        ! stage derivative
        this % K(j) =  F(this % T(j), this % Y(j))
@@ -439,11 +444,11 @@ contains
   ! Get the stage derivative array for the current step and states DIRK
   !-------------------------------------------------------------------!
   
-  subroutine set_stage_valuesDIRK(this, k, q, qdot)
+  subroutine set_stage_valuesDIRK(this, k, q)
 
     class(DIRK) :: this
     integer, intent(in) :: k 
-    real(8), intent(in), dimension(:) :: q, qdot
+    real(8), intent(in), dimension(:) :: q
     integer :: j
 
     ! Stage derivatives are implicitly found at each iteration
@@ -466,11 +471,11 @@ contains
   ! Get the stage derivative array for the current step and states IRK
   !-------------------------------------------------------------------!
   
-  subroutine set_stage_valuesIRK(this, k, q, qdot)
+  subroutine set_stage_valuesIRK(this, k, q)
 
     class(IRK) :: this
     integer, intent(in) :: k 
-    real(8), intent(in), dimension(:) :: q, qdot
+    real(8), intent(in), dimension(:) :: q
     integer :: j
     
     ! Stage derivatives are implicitly found at each iteration
@@ -657,7 +662,7 @@ contains
     march: do k = 2, N + 1
        
        ! find the stage derivatives at the current step
-       call this % set_stage_values(k, q, qdot)
+       call this % set_stage_values(k, q)
        
        ! advance the state to the current step
        call this % update_states(k, q, qdot)
