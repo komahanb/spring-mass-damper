@@ -137,7 +137,7 @@ contains
     real(8), parameter :: onethird = 1.0d0/3.0d0
     real(8), parameter :: onesixth = 1.0d0/6.0d0
     real(8), parameter :: oneeight = 1.0d0/8.0d0
-    real(8), parameter :: one  = 1.0d0
+    real(8), parameter :: one = 1.0d0
     real(8), parameter :: alpha = half
 
     ! put the entries into the tableau
@@ -416,8 +416,6 @@ contains
        
        ! find the stage derivatives at the current step
        call this % get_stage_derivatives(k, q, qdot, ydot)
-
-       !       print*, "k,ydot:", k, ydot
        
        ! advance the state to the current step
        call this % update_states(k, q, qdot, ydot)
@@ -436,17 +434,21 @@ contains
     integer, intent(in) :: k 
     real(8), intent(in), dimension(:) :: q, qdot
     real(8), intent(out) :: ydot(this % num_stages) ! stage derivatives
+    real(8) :: tau, Y
     integer :: j
-
+    
     do j = 1, this % num_stages
-       ydot(j) =  residual(&
-            & dble(k-2)*this % h + this % C(j)*this % h, &
-            & q(k-1) + sum(this % A(j,:)*ydot(:)), &
-            & qdot(k-1))
+
+       ! stage time
+       tau = dble(k-2)*this % h + this % C(j)*this % h
+
+       ! state q
+       Y = q(k-1) + this % h*sum(this % A(j,:)*ydot(:))
+       
+       !qdot = f(t,q)
+       ydot(j) =  residual(tau, Y, qdot(k-1))
+
     end do
-
-    ! drive the residual to zero and solve for the stage derivatives
-
     
   end subroutine get_stage_derivativesERK
 
@@ -608,8 +610,10 @@ contains
     real(8), intent(in)  :: q, qdot ! actual states
 
     ! residual = qdot + cos(q) - sin(time)
-    residual = qdot - cos(time)
-    
+    ! residual = qdot - cos(time)
+    !residual = cos(q) - sin(time)
+    residual = - sin(time)
+
   end function residual
 
   !-------------------------------------------------------------------!
@@ -712,12 +716,12 @@ contains
     
     ! update the qdot value
     qdot(k) = sum(this % B(:)*ydot(:))
-
+    
     ! update qdot (for second order ODE)
-!    if (present(qdot) .and. present(yddot))then
+    !    if (present(qdot) .and. present(yddot))then
     !   qdot(k) = qdot(k-1) + this % h*sum(this % B(:)*yddot(:))
- !   end if
-
+    !   end if
+    
   end subroutine update_states
 
 end module runge_kutta_class
@@ -728,7 +732,7 @@ program main
 
   implicit none
 
-  integer, parameter :: N=  10
+  integer, parameter :: N=  1000
   real(8), parameter :: h = 1.0d-2
 
   type(DIRK) :: DIRK1
@@ -747,11 +751,11 @@ program main
  ! print *, " > Explicit Runge Kutta"
   call ERK1  % initialize(4)
   call ERK1  % integrate(q, qdot, N)
-  write (*, '(4F15.6)', advance='yes') (dble(i-1)*ERK1 % h, &
-       & (q(i)), qdot(i), residual(dble(i-1)*ERK1 % h, q(i), qdot(i)), i = 1, N+1)
-
   call ERK1  % finalize()
 
+  write (*, '(4F15.8)', advance='yes') (dble(i-1)*ERK1 % h, &
+       & (q(i)), abs(q(i)-cos(dble(i-1)*ERK1 % h)), residual(dble(i-1)*ERK1 % h, q(i), qdot(i)), i = 1, N+1)
+  
   !print *, " > Implicit Runge Kutta"
   call IRK1  % initialize()
   call IRK1  % integrate(q, qdot, N)
