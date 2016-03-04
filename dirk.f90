@@ -455,9 +455,25 @@ contains
     class(DIRK) :: this
     integer, intent(in) :: k 
     real(8), intent(in), dimension(:) :: q
+    integer :: j
 
+    ! Find the stage times
+    do j = 1, this % num_stages
+       this % T(j) = dble(k-2)*this % h + this % C(j)*this % h
+    end do
+    
+    ! Guess the solution for stage states
+    this % Y(:) = 1.0d0
+    
+    ! solve the non linear stage equations using Newton's method for
+    ! the actual stage states 
+    ! S function calls
+    ! S jacobian calls
+    ! Times the number of newton iterations (N)
     call this % newton_solve(q(k-1))
 
+    ! at this point Y, K, T are finalized--just like ERK
+    
   end subroutine compute_stage_valuesDIRK
 
   !-------------------------------------------------------------------!
@@ -491,9 +507,6 @@ contains
     integer :: ipiv(this%num_stages), info
     logical :: conv = .false.
     
-    ! initial starting point for stage derivatives
-    this % K = 0.0d0
-
     newton: do n = 1, max_newton
        
        ! Get the residual of the function
@@ -515,7 +528,7 @@ contains
        end if
        
        ! update q
-       this % K = this % K + dQ
+       this % Y = this % Y + dQ
        
     end do newton
 
@@ -567,13 +580,18 @@ contains
 
     class(DIRK) :: this
     real(8) :: qk
-    integer :: i, j
+    integer :: i
 
     do i = 1, this % num_stages
-       !       do j = 1, this % num_stages
-       ! are we making duplicate function calls here?
-       this % R(i) = this % Y(i) - qk - this % h * this % K(i) !F(this % T(i), this % Y(i))
-       !end do
+
+       ! this could be the last newton iteration, so we store the
+       ! function call value; may be there is better way to handle
+       ! this logic
+       
+       this % K(i) = F(this % T(i), this % Y(i))
+
+       this % R(i) = this % Y(i) - qk - this % h * this % K(i)
+       
     end do
     
   end subroutine compute_stage_residual
