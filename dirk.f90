@@ -455,21 +455,8 @@ contains
     class(DIRK) :: this
     integer, intent(in) :: k 
     real(8), intent(in), dimension(:) :: q
-    integer :: j
 
-    ! Stage derivatives are implicitly found at each iteration
-!!$
-!!$    do j = 1, this % num_stages
-!!$
-!!$       ! stage time
-!!$       tau = dble(k-2)*this % h + this % C(j)*this % h
-!!$
-!!$       ! state q
-!!$       Y = q(k-1) + this % h*sum(this % A(j,:)*this % K(:))
-!!$
-!!$       call newton_solve(k, tau, Y, this % K(j))
-!!$
-!!$    end do
+    call this % newton_solve(q(k-1))
 
   end subroutine compute_stage_valuesDIRK
 
@@ -485,6 +472,7 @@ contains
     integer :: j
     
     ! Stage derivatives are implicitly found at each iteration
+    ! call this % newton_solve(q(k-1))
 
   end subroutine compute_stage_valuesIRK
 
