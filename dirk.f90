@@ -7,6 +7,8 @@
 
 ! o User needs to provide the implementation for the function 'f' in
 !   the module
+! 
+! o Yet to implement the multivariate case
 !=====================================================================!
 ! Author: Komahan Boopathy, komahan@gatech.edu
 !=====================================================================!
@@ -471,10 +473,19 @@ contains
     integer, intent(in) :: k ! current time step    
     real(8), intent(in) :: time
     real(8), intent(inout) :: q, qdot
+    real(8) :: JAC, RES
     integer :: max_newton = 20
     integer :: n, jj
 
     newton: do n = 1, max_newton
+
+       ! Get the residual of the function
+
+       ! Get the jacobian matrix
+       
+       JAC = JAC_DIRK(this % h, this % A(1,1), time, q)
+
+       !I - this % h * this % A(,i)*dF/dq
        
     end do newton
 
@@ -498,6 +509,37 @@ contains
 
   end function F
   
+  !-------------------------------------------------------------------!
+  ! DFDQ of the function
+  !-------------------------------------------------------------------!
+
+  real(8) pure function DFDQ(time, q)
+    
+    real(8), intent(in)  :: time
+    real(8), intent(in)  :: q
+
+    DFDQ = 0.0d0
+    
+    ! F = qdot + cos(q) - sin(time)
+    ! F = qdot - cos(time)
+    ! F = cos(q) - sin(time)
+    ! F = exp(time)
+
+  end function DFDQ
+
+  !-------------------------------------------------------------------!
+  ! Jacobian of the function => [I - h A(i,i) DFDQ]
+  !-------------------------------------------------------------------!
+  
+  real(8) pure function JAC_DIRK(h, Aii, time, q)
+
+    real(8), intent(in)  :: time, h, Aii
+    real(8), intent(in)  :: q
+    
+    JAC_DIRK = 1.0d0 - h * Aii * DFDQ(time, q)
+    
+  end function JAC_DIRK
+
   !-------------------------------------------------------------------!
   ! Initialize the dirk datatype and construct the tableau
   !-------------------------------------------------------------------!
