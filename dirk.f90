@@ -1,15 +1,23 @@
 !=====================================================================!
-! Module that implements explicit, implicit and semi-implicit
+! Module that implements Explicit, Implicit and Semi-implicit
 ! Runge-Kutta integration schemes
 !=====================================================================!
+! o This module is suitable for the Explicit First order form
+!                 qdot = f(q(t),t)
 
+! o User needs to provide the implementation for the function 'f' in
+!   the module
+!=====================================================================!
+! Author: Komahan Boopathy, komahan@gatech.edu
+!=====================================================================!
+  
 module runge_kutta_class
   
   implicit none
 
   private
 
-  public :: DIRK, IRK, ERK, residual
+  public :: DIRK, IRK, ERK, F
 
   !-------------------------------------------------------------------!
   ! Abstract Runge-Kutta type
@@ -18,22 +26,27 @@ module runge_kutta_class
   type, abstract :: RK
      
      integer :: num_stages = 1  ! default number of stages
+     integer :: order           ! order of accuracy
      real(8) :: h = 0.1d0       ! default step size ( will reconsider
                                 ! when implementing adaptive step
                                 ! size)
-     integer :: order           ! order of accuracy
+
+     ! The Butcher Tableau 
      real(8), dimension(:,:), allocatable :: A ! forms the coeff matrix
      real(8), dimension(:)  , allocatable :: B ! multiplies the state derivatives
      real(8), dimension(:)  , allocatable :: C ! multiplies the time
 
+     ! The stage derivatives
+     real(8), dimension(:)  , allocatable :: K ! the stage derivatives
+
    contains
 
-     ! put all the common procedures
+     ! Deferred common procedures
      procedure(integrate_interface), deferred :: integrate
      procedure(stage_derivative_interface), deferred :: get_stage_derivatives
      procedure(buthcher_interface), deferred  :: setup_butcher_tableau
 
-     ! implemented procedures
+     ! Implemented common procedures
      procedure :: initialize, finalize
      procedure :: update_states
 
@@ -60,12 +73,11 @@ module runge_kutta_class
      ! Interface for finding the stage derivatives at each time step
      !----------------------------------------------------------------!
      
-     subroutine stage_derivative_interface(this, k, q, qdot, ydot)
+     subroutine stage_derivative_interface(this, k, q, qdot)
        import RK
        class(RK) :: this
        integer, intent(in) :: k 
        real(8), intent(in), dimension(:) :: q, qdot
-       real(8), intent(out) :: ydot(this % num_stages) ! stage derivatives
      end subroutine stage_derivative_interface
 
      !----------------------------------------------------------------!
@@ -105,8 +117,7 @@ module runge_kutta_class
      procedure :: integrate => integrateDIRK
      procedure :: setup_butcher_tableau => ButcherDIRK
      procedure :: get_stage_derivatives =>get_stage_derivativesDIRK
-     procedure :: get_first_stage_deriv
-     procedure :: get_approx_q
+
      procedure :: newton_solve
 
   end type DIRK
@@ -122,6 +133,7 @@ module runge_kutta_class
      procedure :: integrate => integrateIRK
      procedure :: setup_butcher_tableau => ButcherIRK
      procedure :: get_stage_derivatives =>get_stage_derivativesIRK
+
   end type IRK
   
 contains
@@ -407,18 +419,16 @@ contains
     class(ERK) :: this
     real(8), intent(inout), dimension(:) :: q, qdot
     integer, intent(in) :: N 
-
-    real(8) :: ydot(this % num_stages) ! stage derivatives
     integer :: k
 
     ! March in time
     march: do k = 2, N + 1
        
        ! find the stage derivatives at the current step
-       call this % get_stage_derivatives(k, q, qdot, ydot)
+       call this % get_stage_derivatives(k, q, qdot)
        
        ! advance the state to the current step
-       call this % update_states(k, q, qdot, ydot)
+       call this % update_states(k, q, qdot)
 
     end do march
 
@@ -428,12 +438,11 @@ contains
   ! Get the stage derivative array for the current step and states ERK
   !-------------------------------------------------------------------!
   
-  subroutine get_stage_derivativesERK(this, k, q, qdot, ydot)
+  subroutine get_stage_derivativesERK(this, k, q, qdot)
 
     class(ERK) :: this
     integer, intent(in) :: k 
     real(8), intent(in), dimension(:) :: q, qdot
-    real(8), intent(out) :: ydot(this % num_stages) ! stage derivatives
     real(8) :: tau, Y
     integer :: j
     
@@ -443,34 +452,25 @@ contains
        tau = dble(k-2)*this % h + this % C(j)*this % h
 
        ! state q
-       Y = q(k-1) + this % h*sum(this % A(j,:)*ydot(:))
+       Y = q(k-1) + this % h*sum(this % A(j,:)*this % K(:))
        
        !qdot = f(t,q)
-       ydot(j) =  residual(tau, Y, qdot(k-1))
+       this % K(j) =  F(tau, Y)
 
     end do
     
   end subroutine get_stage_derivativesERK
 
-
   !-------------------------------------------------------------------!
   ! Get the stage derivative array for the current step and states DIRK
   !-------------------------------------------------------------------!
   
-  subroutine get_stage_derivativesDIRK(this, k, q, qdot, ydot)
+  subroutine get_stage_derivativesDIRK(this, k, q, qdot)
 
     class(DIRK) :: this
     integer, intent(in) :: k 
     real(8), intent(in), dimension(:) :: q, qdot
-    real(8), intent(out) :: ydot(this % num_stages) ! stage derivatives
     integer :: j
-
-!!$    do j = 1, this % num_stages
-!!$       ydot(j) =  residual(&
-!!$            & dble(k-2)*this % h + this % C(j)*this % h, &
-!!$            & q(k-1) + sum(this % A(j,:)*ydot(:)), &
-!!$            & qdot(k-1))
-!!$    end do
 
   end subroutine get_stage_derivativesDIRK
 
@@ -479,21 +479,12 @@ contains
   ! Get the stage derivative array for the current step and states IRK
   !-------------------------------------------------------------------!
   
-  subroutine get_stage_derivativesIRK(this, k, q, qdot, ydot)
+  subroutine get_stage_derivativesIRK(this, k, q, qdot)
 
     class(IRK) :: this
     integer, intent(in) :: k 
     real(8), intent(in), dimension(:) :: q, qdot
-    real(8), intent(out) :: ydot(this % num_stages) ! stage derivatives
     integer :: j
-    
-!!$
-!!$    do j = 1, this % num_stages
-!!$       ydot(j) =  residual(&
-!!$            & dble(k-2)*this % h + this % C(j)*this % h, &
-!!$            & q(k-1) + sum(this % A(j,:)*ydot(:)), &
-!!$            & qdot(k-1))
-!!$    end do
 
   end subroutine get_stage_derivativesIRK
 
@@ -514,9 +505,6 @@ contains
     class(IRK) :: this
     real(8), intent(inout), dimension(:) :: q, qdot
     integer, intent(in) :: N 
-
-    real(8) :: time(10)
-    real(8) :: ydot(this % num_stages) ! stage derivatives
     integer :: k
 
   end subroutine IntegrateIRK
@@ -539,27 +527,7 @@ contains
 
     real(8), intent(inout), dimension(:) :: q, qdot
     integer, intent(in) :: N 
-    real(8) :: ydot(this % num_stages) ! stage derivatives
-    real(8) :: time(10)
     integer :: k
-
-    ! Integration Logic
-    
-!!$    ! March in time
-!!$    march: do k = 2, N + 1
-!!$
-!!$       q(k) = q(k-1) 
-!!$
-!!$       time(k) = time(k-1) + this % h
-!!$       
-!!$       ! find the stage derivatives ydot
-!!$!       qdot  = q + h*c(1)*(ydot+small)
-!!$
-!!$ !      call this % newton_solve(k, time(k), q(k), ydot(k))
-!!$       
-!!$       call this % update_states(k, q, ydot)
-!!$
-!!$    end do march
    
   end subroutine IntegrateDIRK
   
@@ -568,93 +536,39 @@ contains
   ! derivatives at each time step
   !-------------------------------------------------------------------!
 
-  subroutine newton_solve(this, k, time, q, qdot, ydot)
+  subroutine newton_solve(this, k, time, q, qdot)
     
     class(dirk) :: this
     integer, intent(in) :: k ! current time step    
     real(8), intent(in) :: time
-    real(8), intent(inout) :: q, qdot, ydot
-    real(8), dimension(this % num_stages) :: R ! residuals
-    real(8), dimension(this % num_stages, this % num_stages) :: dR !jacobians
-    integer :: n, jj
+    real(8), intent(inout) :: q, qdot
     integer :: max_newton = 20
-    real(8) :: tmp(this % num_stages)
-    
+    integer :: n, jj
+
     newton: do n = 1, max_newton
        
-       ! Make as many residual and jacobian calls as the number of stages      
-!!$       forall(jj = 1:this % num_stages) &
-!!$            & R(jj) = residual(time + this % h * C(jj), &
-!!$            & q + this % h * this % B(jj) * ydot(jj), &
-!!$            & qdot) !qdot or ydot
-       
-!!$       forall(jj = 1:this % num_stages) R(jj) = residual(time, q, qdot+small)
-!!$       call residual(ydot+small, q + h*c(1)*(ydot+small), t+h*b(1), tmp)
-
-       ! FD approximation of the residual
-       do jj = 1, this % num_stages
-!          R(jj) = residual(time, q, qdot)
-       end do
-
     end do newton
 
   end subroutine newton_solve
   
   !-------------------------------------------------------------------!
-  ! Residual of the govenrning equations
+  ! F of the govenrning equations
   !-------------------------------------------------------------------!
 
-  real(8) pure function residual(time, q, qdot)
+  real(8) pure function F(time, q)
     
     real(8), intent(in)  :: time
-    real(8), intent(in)  :: q, qdot ! actual states
+    real(8), intent(in)  :: q
 
-    ! residual = qdot + cos(q) - sin(time)
-    ! residual = qdot - cos(time)
-    ! residual = cos(q) - sin(time)
-    residual = - sin(time)
-    ! residual = exp(time)
-
-  end function residual
-
-  !-------------------------------------------------------------------!
-  ! Get the stage derivatives by solving the nonlinear system using
-  ! Newton's method
-  !-------------------------------------------------------------------!
-
-  function get_first_stage_deriv(this) result(ydot)
+    F = - sin(time)
     
-    class(dirk) :: this
-    real(8) :: q, qdot(this % num_stages)
-    integer :: r
-    real(8) :: ydot(this % num_stages)
+    ! F = qdot + cos(q) - sin(time)
+    ! F = qdot - cos(time)
+    ! F = cos(q) - sin(time)
+    ! F = exp(time)
 
-    ! solve the nonlinear system to get the stage derivatives
-    ! call newton1(1, time(I), q(i), K(1,i), b, c)
-
-  end function get_first_stage_deriv
+  end function F
   
-  !-------------------------------------------------------------------!
-  ! Approximate q based on the runge-kutta scheme
-  !-------------------------------------------------------------------!
-  
-  real(8) function get_approx_q(this)
-    
-    class(dirk) :: this
-    real(8) :: q, qdot(this % num_stages)
-    integer :: r, i, j
-    real(8) :: ydot(this % num_stages)
-   
-    ydot = this % get_first_stage_deriv()
-    
-    do i = 1, this % num_stages
-       do  j = 1, this % num_stages
-          q = q + this % h * this % A(j,i)*ydot(j)
-       end do
-    end do
-    
-  end function get_approx_q
-
   !-------------------------------------------------------------------!
   ! Initialize the dirk datatype and construct the tableau
   !-------------------------------------------------------------------!
@@ -681,6 +595,10 @@ contains
     allocate(this % C(this % num_stages))
     this % C = 0.0d0
 
+    ! allocate space for the stage derivatives
+    allocate(this % K(this % num_stages))
+    this % K = 0.0d0
+    
     call this % setup_butcher_tableau()
 
   end subroutine initialize
@@ -696,6 +614,7 @@ contains
     if(allocated(this % A)) deallocate(this % A)
     if(allocated(this % B)) deallocate(this % B)
     if(allocated(this % C)) deallocate(this % C)
+    if(allocated(this % K)) deallocate(this % K)
 
   end subroutine finalize
 
@@ -703,25 +622,18 @@ contains
   ! Update the states based on RK Formulae
   !-------------------------------------------------------------------!
   
-  subroutine update_states(this, k, q, qdot, ydot, yddot)
+  subroutine update_states(this, k, q, qdot)
 
     class(RK) :: this
     integer, intent(in) :: k ! current time step
     real(8), intent(inout), dimension(:) :: q ! actual states
     real(8), intent(inout), dimension(:) :: qdot ! actual state
-    real(8), intent(in), dimension(:) :: ydot ! first stage derivative
-    real(8), OPTIONAL, intent(in), dimension(:) :: yddot ! second stage derivative
 
     ! update q (for first order ODE)
-    q(k) = q(k-1) + this % h*sum(this % B(:)*ydot(:))
+    q(k) = q(k-1) + this % h*sum(this % B(:)*this % K(:))
     
     ! update the qdot value
-    qdot(k) = sum(this % B(:)*ydot(:))
-    
-    ! update qdot (for second order ODE)
-    !    if (present(qdot) .and. present(yddot))then
-    !   qdot(k) = qdot(k-1) + this % h*sum(this % B(:)*yddot(:))
-    !   end if
+    qdot(k) = sum(this % B(:)*this % K(:))
     
   end subroutine update_states
 
@@ -733,12 +645,12 @@ program main
 
   implicit none
 
-  integer, parameter :: N=  100
+  integer, parameter :: N = 100
   real(8), parameter :: h = 1.0d-1
 
-  type(DIRK) :: DIRK1
-  type(IRK)  :: IRK1
-  type(ERK)  :: ERK1
+  type(DIRK) :: DIRKOBJ
+  type(IRK)  :: IRKOBJ
+  type(ERK)  :: ERKOBJ
   
   real(8) :: q(4, N+1) = 0.0d0, qdot(4, N+1) = 0.0d0, error(4, N+1) = 0.0d0
   integer :: i, kk
@@ -752,13 +664,13 @@ program main
   do kk = 1, 4
 
      ! Test for each RK stage
-     call ERK1  % initialize(kk)
-     call ERK1  % integrate(q(kk,:), qdot(kk,:), N)
-     call ERK1  % finalize()
+     call ERKOBJ  % initialize(kk)
+     call ERKOBJ  % integrate(q(kk,:), qdot(kk,:), N)
+     call ERKOBJ  % finalize()
      
      ! Find the error
      do i = 1, N +1
-        error(kk,i) = abs(q(kk,i) - cos(dble(i-1)*ERK1 % h))
+        error(kk,i) = abs(q(kk,i) - cos(dble(i-1)*ERKOBJ % h))
      end do
 
   end do
@@ -774,13 +686,13 @@ program main
   do kk = 1, 3
 
      ! Test for each RK stage
-     call IRK1  % initialize(kk)
-     call IRK1  % integrate(q(kk,:), qdot(kk,:), N)
-     call IRK1  % finalize()
+     call IRKOBJ  % initialize(kk)
+     call IRKOBJ  % integrate(q(kk,:), qdot(kk,:), N)
+     call IRKOBJ  % finalize()
      
      ! Find the error
      do i = 1, N +1
-        error(kk,i) = abs(q(kk,i) - cos(dble(i-1)*IRK1 % h))
+        error(kk,i) = abs(q(kk,i) - cos(dble(i-1)*IRKOBJ % h))
      end do
 
   end do
@@ -796,13 +708,13 @@ program main
   do kk = 1, 3
 
      ! Test for each RK stage
-     call DIRK1  % initialize(kk)
-     call DIRK1  % integrate(q(kk,:), qdot(kk,:), N)
-     call DIRK1  % finalize()
+     call DIRKOBJ  % initialize(kk)
+     call DIRKOBJ  % integrate(q(kk,:), qdot(kk,:), N)
+     call DIRKOBJ  % finalize()
 
      ! Find the error
      do i = 1, N +1
-        error(kk,i) = abs(q(kk,i) - cos(dble(i-1)*DIRK1 % h))
+        error(kk,i) = abs(q(kk,i) - cos(dble(i-1)*DIRKOBJ % h))
      end do
 
   end do
@@ -812,17 +724,33 @@ program main
 end program main
 
 !!$ 
-!!$  write (*, '(4E15.8)', advance='yes') (dble(i-1)*ERK1 % h, &
-!!$       & (q(i)), abs(q(i)-cos(dble(i-1)*ERK1 % h)), &
-!!$       & residual(dble(i-1)*ERK1 % h, &
+!!$  write (*, '(4E15.8)', advance='yes') (dble(i-1)*ERKOBJ % h, &
+!!$       & (q(i)), abs(q(i)-cos(dble(i-1)*ERKOBJ % h)), &
+!!$       & F(dble(i-1)*ERKOBJ % h, &
 !!$       & q(i), qdot(i)), i = 1, N+1)
 !!$  
   !print *, " > Implicit Runge Kutta"
-!!$  call IRK1  % initialize()
-!!$  call IRK1  % integrate(q, qdot, N)
-!!$  call IRK1  % finalize()
+!!$  call IRKOBJ  % initialize()
+!!$  call IRKOBJ  % integrate(q, qdot, N)
+!!$  call IRKOBJ  % finalize()
 !!$
 !!$  !print *, " > Diagonally-Implicit Runge Kutta"
-!!$  call DIRK1 % initialize()
-!!$  call DIRK1 % integrate(q, qdot, N)
-!!$  call DIRK1 % finalize()
+!!$  call DIRKOBJ % initialize()
+!!$  call DIRKOBJ % integrate(q, qdot, N)
+!!$  call DIRKOBJ % finalize()
+!!$  !-------------------------------------------------------------------!
+!!$  ! Get the stage derivatives by solving the nonlinear system using
+!!$  ! Newton's method
+!!$  !-------------------------------------------------------------------!
+!!$
+!!$  function get_first_stage_deriv(this) result(ydot)
+!!$    
+!!$    class(dirk) :: this
+!!$    real(8) :: q, qdot(this % num_stages)
+!!$    integer :: r
+!!$    real(8) :: ydot(this % num_stages)
+!!$
+!!$    ! solve the nonlinear system to get the stage derivatives
+!!$    ! call newton1(1, time(I), q(i), K(1,i), b, c)
+!!$
+!!$  end function get_first_stage_deriv
