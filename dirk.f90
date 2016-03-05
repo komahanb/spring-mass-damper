@@ -1,9 +1,9 @@
 !=====================================================================!
-! Module that implements Explicit, Implicit and Semi-implicit
-! Runge-Kutta integration schemes
+!Module that implements Explicit, Implicit and Semi-implicit
+!Runge-Kutta integration schemes
 !=====================================================================!
-! o This module is suitable for the Explicit First order form
-!                 qdot = f(q(t),t)
+!o This module is suitable for the Explicit First order form qdot =
+!f(q(t),t)
 
 ! o User needs to provide the implementation for the function 'f' in
 !   the module
@@ -356,7 +356,7 @@ contains
        this % A(2,2) = 1.0d0/4.0d0
 
        this % B(1) = 3.0d0/4.0d0
-       this % B(2) = 1.0d0/6.0d0
+       this % B(2) = 1.0d0/4.0d0
 
        this % C(1) = 1.0d0/3.0d0
        this % C(2) = 1.0d0
@@ -367,27 +367,50 @@ contains
 
        ! Radau II A scheme (3 step)
 
-       this % A(1,1) = 11.0d0/45.0d0 - 7.0d0*sqrt(6.0d0)/360.0d0
-       this % A(2,1) = 37.0d0/225.0d0 + 169.0d0*sqrt(6.0d0)/1800.0d0
-       this % A(3,1) = 4.0d0/9.0d0 - sqrt(6.0d0)/36.0d0
+       this % A(1,1) = (88.0d0 -7.0d0*sqrt(6.0d0))/360.0d0
+       this % A(2,1) = (296.0d0 + 169.0d0*sqrt(6.0d0))/1800.0d0
+       this % A(3,1) = (16.0d0 - sqrt(6.0d0))/36.0d0
 
-       this % A(1,2) = 37.0d0/225.0d0 - 169.0d0*sqrt(6.0d0)/1800.0d0
-       this % A(2,2) = 11.0d0/45.0d0 + 7.0d0*sqrt(6.0d0)/360.0d0
-       this % A(3,2) = 4.0d0/9.0d0 + sqrt(6.0d0)/36.0d0
+       this % A(1,2) = (296.0d0 - 169.0d0*sqrt(6.0d0))/1800.0d0
+       this % A(2,2) = (88.0d0 + 7.0d0*sqrt(6.0d0))/360.0d0
+       this % A(3,2) = (16.0d0 + sqrt(6.0d0))/36.0d0
 
-       this % A(1,3) = -2.0d0/225.0d0 + sqrt(6.0d0)/75.0d0
-       this % A(2,3) = -2.0d0/225.0d0 - sqrt(6.0d0)/75.0d0 
-       this % A(3,3) = 1.0d0/9.0d0
+       this % A(1,3) = (-2.0d0 + 3.0d0*sqrt(6.0d0))/225.0d0
+       this % A(2,3) = (-2.0d0 - 3.0d0*sqrt(6.0d0))/225.0d0
+       this % A(3,3) =  1.0d0/9.0d0
 
-       this % B(1) = 4.0d0/9.0d0 - sqrt(6.0d0)/36.0d0
-       this % B(2) = 4.0d0/9.0d0 + sqrt(6.0d0)/36.0d0
+       this % B(1) = (16.0d0 - sqrt(6.0d0))/36.0d0
+       this % B(2) = (16.0d0 + sqrt(6.0d0))/36.0d0
        this % B(3) = 1.0d0/9.0d0
 
-       this % C(1) = 2.0d0/5.0d0 - sqrt(6.0d0)/10.0d0
-       this % C(2) = 2.0d0/5.0d0 + sqrt(6.0d0)/10.0d0
+       this % C(1) = (4.0d0 - sqrt(6.0d0))/10.0d0
+       this % C(2) = (4.0d0 + sqrt(6.0d0))/10.0d0
        this % C(3) = 1.0d0
 
-       this % order = 4
+       this % order = 5
+
+!!$
+!!$       this % A(1,1) = 11.0d0/45.0d0 - 7.0d0*sqrt(6.0d0)/360.0d0
+!!$       this % A(2,1) = 37.0d0/225.0d0 + 169.0d0*sqrt(6.0d0)/1800.0d0
+!!$       this % A(3,1) = 4.0d0/9.0d0 - sqrt(6.0d0)/36.0d0
+!!$
+!!$       this % A(1,2) = 37.0d0/225.0d0 - 169.0d0*sqrt(6.0d0)/1800.0d0
+!!$       this % A(2,2) = 11.0d0/45.0d0 + 7.0d0*sqrt(6.0d0)/360.0d0
+!!$       this % A(3,2) = 4.0d0/9.0d0 + sqrt(6.0d0)/36.0d0
+!!$
+!!$       this % A(1,3) = -2.0d0/225.0d0 + sqrt(6.0d0)/75.0d0
+!!$       this % A(2,3) = -2.0d0/225.0d0 - sqrt(6.0d0)/75.0d0 
+!!$       this % A(3,3) = 1.0d0/9.0d0
+!!$
+!!$       this % B(1) = 4.0d0/9.0d0 - sqrt(6.0d0)/36.0d0
+!!$       this % B(2) = 4.0d0/9.0d0 + sqrt(6.0d0)/36.0d0
+!!$       this % B(3) = 1.0d0/9.0d0
+!!$
+!!$       this % C(1) = 2.0d0/5.0d0 - sqrt(6.0d0)/10.0d0
+!!$       this % C(2) = 2.0d0/5.0d0 + sqrt(6.0d0)/10.0d0
+!!$       this % C(3) = 1.0d0
+!!$
+!!$       this % order = 4
 
     else
 
@@ -582,9 +605,21 @@ contains
 
        ! Jacobian is a lower triangle matrix
        do i = 1, this % num_stages
-          do j = 1, i
-             this % J(j,i) = 1.0d0 - this % h * this % A(j,i) &
-                  &* DFDY(this % T(i), this % Y(i))
+          do j = 1, i 
+
+             ! Evaluate only when the coeff is nonzero
+             if (this % A(j,i) .ne. 0.0d0) then
+
+                if (i .eq. j) then
+                   this % J(j,i) = 1.0d0 - this % h * this % A(j,i) &
+                        &* DFDY(this % T(i), this % Y(i))
+                else
+                   this % J(j,i) = - this % h * this % A(j,i) &
+                        &* DFDY(this % T(i), this % Y(i))
+                end if ! diagonal or not
+
+             end if ! non-zero
+
           end do
        end do
 
@@ -593,15 +628,24 @@ contains
        ! Jacobian is a FULL  matrix
        do i = 1, this % num_stages
           do j = 1, this % num_stages
-             this % J(j,i) = 1.0d0 - this % h * this % A(j,i) &
-                  &* DFDY(this % T(i), this % Y(i))
+
+             ! Evaluate only when the coeff is nonzero
+             if (this % A(j,i) .ne. 0.0d0) then
+
+                if (i .eq. j) then
+                   this % J(j,i) = 1.0d0 - this % h * this % A(j,i) &
+                        &* DFDY(this % T(i), this % Y(i))
+                else
+                   this % J(j,i) = - this % h * this % A(j,i) &
+                        &* DFDY(this % T(i), this % Y(i))                   
+                end if ! diagonal or not
+
+             end if ! non-zero
+
           end do
        end do
 
     end select
-
-    !this % J(i,i) = 1.0d0 - this % h * this % A(i,i)
-    !* DFDY(this % T(i), this % Y(i))
     
   end subroutine compute_stage_jacobian
 
