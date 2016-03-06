@@ -247,10 +247,10 @@ contains
 
     class(DIRK) :: this
     real(8), parameter :: PI = 22.0d0/7.0d0
-    real(8), parameter :: tmp  = 1.0d0/(2.0d0*sqrt(3.0d0))
+    real(8), parameter :: tmp  = 1.0d0/(2.0d0*dsqrt(3.0d0))
     real(8), parameter :: half = 1.0d0/2.0d0
     real(8), parameter :: one  = 1.0d0
-    real(8), parameter :: alpha = 2.0d0*cos(PI/18.0d0)/sqrt(3.0d0)
+    real(8), parameter :: alpha = 2.0d0*cos(PI/18.0d0)/dsqrt(3.0d0)
 
     ! put the entries into the tableau (ROGER ALEXANDER 1977)
     if (this % num_stages .eq. 1) then 
@@ -275,7 +275,7 @@ contains
        ! Crouzeix formula (A-stable)
 
        this % A(1,1) = half + tmp
-       this % A(2,1) = -one/sqrt(3.0d0)
+       this % A(2,1) = -one/dsqrt(3.0d0)
        this % A(2,2) = this % A(1,1)
 
        this % B(1)   = half
@@ -293,12 +293,13 @@ contains
        this % A(1,1) = (one+alpha)*half
        this % A(2,1) = -half*alpha
        this % A(3,1) =  one + alpha
+
        this % A(2,2) = this % A(1,1)
        this % A(3,2) = -(one + 2.0d0*alpha)
        this % A(3,3) = this % A(1,1)
        
-       this % B(1)   = one/(6.0d0*alpha**2)
-       this % B(2)   = one - one/(3.0d0*alpha**2)
+       this % B(1)   = one/(6.0d0*alpha*alpha)
+       this % B(2)   = one - one/(3.0d0*alpha*alpha)
        this % B(3)   = this % B(1)
 
        this % C(1) = (one + alpha)*half
@@ -367,47 +368,47 @@ contains
 
        ! Radau II A scheme (3 step)
 
-       this % A(1,1) = (88.0d0 -7.0d0*sqrt(6.0d0))/360.0d0
-       this % A(2,1) = (296.0d0 + 169.0d0*sqrt(6.0d0))/1800.0d0
-       this % A(3,1) = (16.0d0 - sqrt(6.0d0))/36.0d0
+       this % A(1,1) = (88.0d0 -7.0d0*dsqrt(6.0d0))/360.0d0
+       this % A(2,1) = (296.0d0 + 169.0d0*dsqrt(6.0d0))/1800.0d0
+       this % A(3,1) = (16.0d0 - dsqrt(6.0d0))/36.0d0
 
-       this % A(1,2) = (296.0d0 - 169.0d0*sqrt(6.0d0))/1800.0d0
-       this % A(2,2) = (88.0d0 + 7.0d0*sqrt(6.0d0))/360.0d0
-       this % A(3,2) = (16.0d0 + sqrt(6.0d0))/36.0d0
+       this % A(1,2) = (296.0d0 - 169.0d0*dsqrt(6.0d0))/1800.0d0
+       this % A(2,2) = (88.0d0 + 7.0d0*dsqrt(6.0d0))/360.0d0
+       this % A(3,2) = (16.0d0 + dsqrt(6.0d0))/36.0d0
 
-       this % A(1,3) = (-2.0d0 + 3.0d0*sqrt(6.0d0))/225.0d0
-       this % A(2,3) = (-2.0d0 - 3.0d0*sqrt(6.0d0))/225.0d0
+       this % A(1,3) = (-2.0d0 + 3.0d0*dsqrt(6.0d0))/225.0d0
+       this % A(2,3) = (-2.0d0 - 3.0d0*dsqrt(6.0d0))/225.0d0
        this % A(3,3) =  1.0d0/9.0d0
 
-       this % B(1) = (16.0d0 - sqrt(6.0d0))/36.0d0
-       this % B(2) = (16.0d0 + sqrt(6.0d0))/36.0d0
+       this % B(1) = (16.0d0 - dsqrt(6.0d0))/36.0d0
+       this % B(2) = (16.0d0 + dsqrt(6.0d0))/36.0d0
        this % B(3) = 1.0d0/9.0d0
 
-       this % C(1) = (4.0d0 - sqrt(6.0d0))/10.0d0
-       this % C(2) = (4.0d0 + sqrt(6.0d0))/10.0d0
+       this % C(1) = (4.0d0 - dsqrt(6.0d0))/10.0d0
+       this % C(2) = (4.0d0 + dsqrt(6.0d0))/10.0d0
        this % C(3) = 1.0d0
 
        this % order = 5
 
 !!$
-!!$       this % A(1,1) = 11.0d0/45.0d0 - 7.0d0*sqrt(6.0d0)/360.0d0
-!!$       this % A(2,1) = 37.0d0/225.0d0 + 169.0d0*sqrt(6.0d0)/1800.0d0
-!!$       this % A(3,1) = 4.0d0/9.0d0 - sqrt(6.0d0)/36.0d0
+!!$       this % A(1,1) = 11.0d0/45.0d0 - 7.0d0*dsqrt(6.0d0)/360.0d0
+!!$       this % A(2,1) = 37.0d0/225.0d0 + 169.0d0*dsqrt(6.0d0)/1800.0d0
+!!$       this % A(3,1) = 4.0d0/9.0d0 - dsqrt(6.0d0)/36.0d0
 !!$
-!!$       this % A(1,2) = 37.0d0/225.0d0 - 169.0d0*sqrt(6.0d0)/1800.0d0
-!!$       this % A(2,2) = 11.0d0/45.0d0 + 7.0d0*sqrt(6.0d0)/360.0d0
-!!$       this % A(3,2) = 4.0d0/9.0d0 + sqrt(6.0d0)/36.0d0
+!!$       this % A(1,2) = 37.0d0/225.0d0 - 169.0d0*dsqrt(6.0d0)/1800.0d0
+!!$       this % A(2,2) = 11.0d0/45.0d0 + 7.0d0*dsqrt(6.0d0)/360.0d0
+!!$       this % A(3,2) = 4.0d0/9.0d0 + dsqrt(6.0d0)/36.0d0
 !!$
-!!$       this % A(1,3) = -2.0d0/225.0d0 + sqrt(6.0d0)/75.0d0
-!!$       this % A(2,3) = -2.0d0/225.0d0 - sqrt(6.0d0)/75.0d0 
+!!$       this % A(1,3) = -2.0d0/225.0d0 + dsqrt(6.0d0)/75.0d0
+!!$       this % A(2,3) = -2.0d0/225.0d0 - dsqrt(6.0d0)/75.0d0 
 !!$       this % A(3,3) = 1.0d0/9.0d0
 !!$
-!!$       this % B(1) = 4.0d0/9.0d0 - sqrt(6.0d0)/36.0d0
-!!$       this % B(2) = 4.0d0/9.0d0 + sqrt(6.0d0)/36.0d0
+!!$       this % B(1) = 4.0d0/9.0d0 - dsqrt(6.0d0)/36.0d0
+!!$       this % B(2) = 4.0d0/9.0d0 + dsqrt(6.0d0)/36.0d0
 !!$       this % B(3) = 1.0d0/9.0d0
 !!$
-!!$       this % C(1) = 2.0d0/5.0d0 - sqrt(6.0d0)/10.0d0
-!!$       this % C(2) = 2.0d0/5.0d0 + sqrt(6.0d0)/10.0d0
+!!$       this % C(1) = 2.0d0/5.0d0 - dsqrt(6.0d0)/10.0d0
+!!$       this % C(2) = 2.0d0/5.0d0 + dsqrt(6.0d0)/10.0d0
 !!$       this % C(3) = 1.0d0
 !!$
 !!$       this % order = 4
