@@ -2,15 +2,14 @@
 !Module that implements Explicit, Implicit and Semi-implicit
 !Runge-Kutta integration schemes
 !=====================================================================!
-!o This module is suitable for the Explicit First order form qdot =
-!f(q(t),t)
-
-! o User needs to provide the implementation for the function 'f' in
+!o This module is suitable for the First order ODEs: q'=f(q(t),t)
+!
+!o User needs to provide the implementation for the function 'f' in
 !   the module
 ! 
-! o Yet to implement the multivariate case
+!o Yet to implement the multivariate case
 !=====================================================================!
-! Author: Komahan Boopathy, komahan@gatech.edu
+! Author: Komahan Boopathy (komahan@gatech.edu)
 !=====================================================================!
   
 module runge_kutta_class
@@ -19,7 +18,7 @@ module runge_kutta_class
 
   private
 
-  public :: DIRK, IRK, ERK, F
+  public :: DIRK, IRK, ERK
 
   !-------------------------------------------------------------------!
   ! Abstract Runge-Kutta type
@@ -341,13 +340,13 @@ contains
        this % C(1)   = 0.5d0
 
        this % order = 2
-
+       
 !!$       ! Implicit Euler (Backward Euler) but first order accurate
 !!$       this % A(1,1) = one
 !!$       this % B(1)   = one
 !!$       this % C(1)   = one
 !!$       this % order = 1
-
+       
 
     else if (this % num_stages .eq. 2) then 
 
@@ -799,22 +798,27 @@ contains
 
 end module runge_kutta_class
 
+!=====================================================================!
+! Main program to test the Runge Kutta Module
+!=====================================================================!
+
 program main
-
+  
   use runge_kutta_class
-
+  
   implicit none
+
+  integer :: i, kk
 
   integer, parameter :: N = 10
   real(8), parameter :: h = 1.0d1
-
+  
   type(DIRK) :: DIRKOBJ
   type(IRK)  :: IRKOBJ
   type(ERK)  :: ERKOBJ
   
   real(8) :: q(4, N+1) = 0.0d0, qdot(4, N+1) = 0.0d0, error(4, N+1) = 0.0d0
-  integer :: i, kk
- 
+  
   !-------------------------------------------------------------------!
   ! Explicit Runge Kutta
   !-------------------------------------------------------------------!
@@ -882,35 +886,3 @@ program main
   write (*, '(a,4E15.8)') "DIRK:", (norm2(error(i,:)), i = 1, 3)
 
 end program main
-
-!!$ 
-!!$  write (*, '(4E15.8)', advance='yes') (dble(i-1)*ERKOBJ % h, &
-!!$       & (q(i)), abs(q(i)-cos(dble(i-1)*ERKOBJ % h)), &
-!!$       & F(dble(i-1)*ERKOBJ % h, &
-!!$       & q(i), qdot(i)), i = 1, N+1)
-!!$  
-  !print *, " > Implicit Runge Kutta"
-!!$  call IRKOBJ  % initialize()
-!!$  call IRKOBJ  % integrate(q, qdot, N)
-!!$  call IRKOBJ  % finalize()
-!!$
-!!$  !print *, " > Diagonally-Implicit Runge Kutta"
-!!$  call DIRKOBJ % initialize()
-!!$  call DIRKOBJ % integrate(q, qdot, N)
-!!$  call DIRKOBJ % finalize()
-!!$  !-------------------------------------------------------------------!
-!!$  ! Get the stage derivatives by solving the nonlinear system using
-!!$  ! Newton's method
-!!$  !-------------------------------------------------------------------!
-!!$
-!!$  function get_first_stage_deriv(this) result(ydot)
-!!$    
-!!$    class(dirk) :: this
-!!$    real(8) :: q, qdot(this % num_stages)
-!!$    integer :: r
-!!$    real(8) :: ydot(this % num_stages)
-!!$
-!!$    ! solve the nonlinear system to get the stage derivatives
-!!$    ! call newton1(1, time(I), q(i), K(1,i), b, c)
-!!$
-!!$  end function get_first_stage_deriv
