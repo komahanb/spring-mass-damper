@@ -56,6 +56,7 @@ module runge_kutta_class
      procedure :: update_states
      procedure :: integrate
      procedure :: reset_stage_values
+     procedure :: check_butcher_tableau
 
   end type RK
   
@@ -699,7 +700,35 @@ contains
 
     call this % setup_butcher_tableau()
 
+    !-----------------------------------------------------------------!
+    ! sanity check
+    !-----------------------------------------------------------------!
+
+    ! Check the Butcher tableau
+    call this % check_butcher_tableau()
+    
   end subroutine initialize
+
+  !-------------------------------------------------------------------!
+  ! Routine that checks if the Butcher Tableau entries are valid for
+  ! the chosen number of stages/order
+  ! -------------------------------------------------------------------!
+  subroutine check_butcher_tableau(this)
+    
+    class(RK) :: this
+    integer :: i
+
+    do i = 1, this  % num_stages
+       if (abs(this%C(i)-sum(this%A(i,:))).gt.5.0d-16) then
+          print *, "WARNING: sum(A(i,j)) != C(i)",i, this % num_stages
+       end if
+    end do
+
+    if ((sum(this%B)-1.0d0) .gt. 5.0d-16) then
+       print *, "WARNING: sum(B) != 1", this % num_stages
+    end if
+    
+  end subroutine check_butcher_tableau
 
   !-------------------------------------------------------------------!
   ! Deallocate the tableau entries
@@ -771,6 +800,8 @@ contains
     real(8), intent(inout), dimension(:) :: q ! actual states
     real(8), intent(inout), dimension(:) :: qdot ! actual state
 
+    integer :: i
+
     ! update the qdot value
     qdot(k) = sum(this % B(:)*this % K(:))
 
@@ -817,7 +848,7 @@ program main
   type(IRK)  :: IRKOBJ
   type(ERK)  :: ERKOBJ
   
-  real(8) :: q(4, N+1) = 0.0d0, qdot(4, N+1) = 0.0d0, error(4, N+1) = 0.0d0
+  real(8) :: q(4, N+1) = 0.0d0, qdot(4, N+1) = 0.0d0, error(4, 2, N+1) = 0.0d0
   
   !-------------------------------------------------------------------!
   ! Explicit Runge Kutta
@@ -834,12 +865,17 @@ program main
      
      ! Find the error
      do i = 1, N +1
-        error(kk,i) = abs(q(kk,i) - exp(dble(i-1)*ERKOBJ % h))
+        error(kk, 1, i) = abs(q(kk,i) - exp(dble(i-1)*ERKOBJ % h))
+     end do
+
+     do i = 1, N +1
+        error(kk, 2, i) = abs(qdot(kk,i) - exp(dble(i-1)*ERKOBJ % h))
      end do
 
   end do
 
-  write (*, '(a,4E15.8)') "ERK :",(norm2(error(i,:)), i = 1,4)
+  write (*, '(a,4E15.8)') "ERK :",(norm2(error(i, 1, :)), i = 1, 4)
+  write (*, '(a,4E15.8)') "ERK :",(norm2(error(i, 2, :)), i = 1, 4)
   
   !-------------------------------------------------------------------!
   ! Implicit Runge Kutta
@@ -856,12 +892,17 @@ program main
      
      ! Find the error
      do i = 1, N +1
-        error(kk,i) = abs(q(kk,i) - exp(dble(i-1)*IRKOBJ % h))
+        error(kk, 1, i) = abs(q(kk,i) - exp(dble(i-1)*IRKOBJ % h))
+     end do
+
+     do i = 1, N +1
+        error(kk, 2, i) = abs(qdot(kk,i) - exp(dble(i-1)*IRKOBJ % h))
      end do
 
   end do
 
-  write (*, '(a,4E15.8)') "IRK :", (norm2(error(i,:)), i = 1, 3)
+  write (*, '(a,4E15.8)') "IRK :", (norm2(error(i, 1, :)), i = 1, 3)
+  write (*, '(a,4E15.8)') "IRK :", (norm2(error(i, 2, :)), i = 1, 3)
 
   !-------------------------------------------------------------------!
   ! Diagonally Implicit Runge Kutta
@@ -878,11 +919,16 @@ program main
 
      ! Find the error
      do i = 1, N +1
-        error(kk,i) = abs(q(kk,i) - exp(dble(i-1)*DIRKOBJ % h))
+        error(kk, 1, i) = abs(q(kk,i) - exp(dble(i-1)*DIRKOBJ % h))
+     end do
+
+     do i = 1, N +1
+        error(kk, 2, i) = abs(qdot(kk,i) - exp(dble(i-1)*DIRKOBJ % h))
      end do
 
   end do
 
-  write (*, '(a,4E15.8)') "DIRK:", (norm2(error(i,:)), i = 1, 3)
+  write (*, '(a,4E15.8)') "DIRK:", (norm2(error(i, 1, :)), i = 1, 3)
+  write (*, '(a,4E15.8)') "DIRK:", (norm2(error(i, 2, :)), i = 1, 3)
 
 end program main
