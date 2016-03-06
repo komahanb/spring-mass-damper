@@ -103,35 +103,37 @@ module runge_kutta_class
   end type ERK
 
   !-------------------------------------------------------------------!  
-  ! Diagonally implicit Runge-Kutta
-  !-------------------------------------------------------------------!  
-
-  type, extends(RK) :: DIRK
-
-   contains
-
-     procedure :: setup_butcher_tableau => ButcherDIRK
-     procedure :: compute_stage_values =>compute_stage_valuesDIRK
-
-     procedure :: newton_solve
-
-     procedure :: compute_stage_residual
-     procedure :: compute_stage_jacobian
-
-  end type DIRK
-
-  !-------------------------------------------------------------------!  
   ! Implicit Runge-Kutta  
   !-------------------------------------------------------------------!  
 
-  type, extends(DIRK) :: IRK
+  type, extends(RK) :: IRK
 
    contains
-
+     
+     ! common implicit routines
+     procedure :: compute_stage_values => compute_stage_values_implicit
+     procedure :: newton_solve
+     procedure :: compute_stage_residual
+     procedure :: compute_stage_jacobian
+     
+     ! routines specialized for this type
      procedure :: setup_butcher_tableau => ButcherIRK
 
   end type IRK
   
+
+  !-------------------------------------------------------------------!  
+  ! Diagonally implicit Runge-Kutta
+  !-------------------------------------------------------------------!  
+
+  type, extends(IRK) :: DIRK
+
+   contains
+     
+     procedure :: setup_butcher_tableau => ButcherDIRK
+
+  end type DIRK
+
 contains
 
   !-------------------------------------------------------------------!
@@ -457,12 +459,12 @@ contains
   end subroutine compute_stage_valuesERK
 
   !-------------------------------------------------------------------!
-  ! Get the stage derivative array for the current step and states DIRK
+  ! Get the stage derivative array for the current step and states 
   !-------------------------------------------------------------------!
   
-  subroutine compute_stage_valuesDIRK(this, k, q)
+  subroutine compute_stage_values_implicit(this, k, q)
 
-    class(DIRK) :: this
+    class(IRK) :: this
     integer, intent(in) :: k 
     real(8), intent(in), dimension(:) :: q
     integer :: j
@@ -484,7 +486,7 @@ contains
 
     ! at this point Y, K, T are finalized--just like ERK
     
-  end subroutine compute_stage_valuesDIRK
+  end subroutine compute_stage_values_implicit
 
   !-------------------------------------------------------------------!
   ! Solve nonlinear stage equations using Newton's method at each time
@@ -493,7 +495,7 @@ contains
 
   subroutine newton_solve(this, qk)
     
-    class(dirk) :: this
+    class(IRK) :: this
     real(8), intent(in) :: qk
     real(8) :: dQ(this % num_stages)
     integer :: max_newton = 20
@@ -572,7 +574,7 @@ contains
   
   subroutine compute_stage_residual(this, qk)
 
-    class(DIRK) :: this
+    class(IRK) :: this
     real(8) :: qk
     integer :: i
 
@@ -597,7 +599,7 @@ contains
 
   subroutine compute_stage_jacobian(this)
 
-    class(DIRK) :: this
+    class(IRK) :: this
     integer :: i, j
     
     select type (this)
@@ -656,7 +658,7 @@ contains
 
   subroutine initialize(this, num_stages, h)
 
-    class(rk) :: this
+    class(RK) :: this
     integer, OPTIONAL, intent(in) :: num_stages
     real(8), OPTIONAL, intent(in) :: h
 
@@ -706,7 +708,7 @@ contains
 
   subroutine finalize(this)
 
-    class(rk) :: this
+    class(RK) :: this
 
     ! clear butcher's tableau
     if(allocated(this % A)) deallocate(this % A)
