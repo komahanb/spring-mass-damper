@@ -244,7 +244,7 @@ contains
 
     ! Find the stage times
     do j = 1, this % num_stages
-       this % T(j) = dble(k-2)*this % h + this % C(j)*this % h
+       this % T(j) = this % time + this % C(j)*this % h
     end do
     
     ! Guess the solution for stage states
@@ -341,7 +341,7 @@ contains
   end subroutine compute_stage_residual
 
   !-------------------------------------------------------------------!
-  ! Computes the stage jacobian and sets into the same instance  
+  ! Computes the stage jacobian and sets into the same instance
   !          J[s x s] = [I(s)-h A(i,i) DFDY(T(i),Y(i))]
   !-------------------------------------------------------------------!
 
