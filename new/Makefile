@@ -7,4 +7,4 @@ default:
 	gfortran -o test *.o -llapack
 
 clean: 
-	rm *.o *.mod *~
+	rm test *.o *.mod *~ 
