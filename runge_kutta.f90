@@ -28,7 +28,7 @@ module runge_kutta_class
      
      integer :: num_stages = 1  ! default number of stages
      integer :: order           ! order of accuracy
-     real(8) :: h = 0.1d0       ! default step size ( will reconsider
+     real(8) :: h = 0.1d-1       ! default step size ( will reconsider
                                 ! when implementing adaptive step
                                 ! size)
 
@@ -437,7 +437,7 @@ contains
     integer :: j, i 
     
     ! Stage derivatives are explicitly found at each iteration
-
+    
     do j = 1, this % num_stages
 
        ! stage time
@@ -445,6 +445,7 @@ contains
 
        ! stage Y
        !this % Y(j) = q(k-1) + this % h*sum(this % A(j,:)*this % K(:))
+       ! this is skipped for j = 1 (initial value)
        tmp = 0.0d0
        do i = 1, j - 1
           tmp = tmp + this % A(j,i)*this % K(j)
@@ -455,7 +456,7 @@ contains
        this % K(j) =  F(this % T(j), this % Y(j))
 
     end do
-    
+
   end subroutine compute_stage_valuesERK
 
   !-------------------------------------------------------------------!
@@ -511,14 +512,14 @@ contains
        ! Get the jacobian matrix
        call this % compute_stage_jacobian()
 
-       ! call lapack to solve the system
+       ! call lapack to solve the stage values system
        dq = - this % R
        call DGESV(this % num_stages, 1, this % J, this % num_stages, &
             & IPIV, dq, this % num_stages, INFO)
 
        ! check stop (change this to norm2 when implementing
        ! multivariate case)
-       if(norm2(this % R) .le. 1.0d-12 .or. norm2(dq) .le. 1.0d-12) then
+       if (norm2(this % R) .le. 1.0d-12 .or. norm2(dq) .le. 1.0d-12) then
           conv = .true.
           exit newton
        end if
@@ -543,7 +544,7 @@ contains
 
     F = exp(time)
     
-    ! F = qdot + cos(q) - sin(time)
+    ! F = cos(q) - sin(time)
     ! F = qdot - cos(time)
     ! F = cos(q) - sin(time)
     ! F = exp(time)
@@ -575,19 +576,29 @@ contains
   subroutine compute_stage_residual(this, qk)
 
     class(IRK) :: this
-    real(8) :: qk
-    integer :: i
-
+    real(8) :: qk, tmp
+    integer :: i, j
+    
     do i = 1, this % num_stages
 
        ! this could be the last newton iteration, so we store the
        ! function call value; may be there is better way to handle
        ! this logic
-       
-       this % K(i) = F(this % T(i), this % Y(i))
 
-       this % R(i) = this % Y(i) - qk - this % h * this % K(i)
-       
+       tmp = 0.0d0
+
+       do j = 1, this % num_stages
+
+          this % K(j) = F(this % T(j), this % Y(j))
+
+          tmp =  tmp + this % A(i,j) * this % K(j)
+
+       end do
+
+       ! yields num_stages equations
+
+       this % R(i) = this % Y(i) - qk - this % h * tmp
+
     end do
     
   end subroutine compute_stage_residual
@@ -608,44 +619,57 @@ contains
 
        ! Jacobian is a lower triangle matrix
        do i = 1, this % num_stages
-          do j = 1, i 
 
+          do j = 1, i 
+             
              ! Evaluate only when the coeff is nonzero
-             if (this % A(j,i) .ne. 0.0d0) then
+             if (this % A(i,j) .ne. 0.0d0) then
 
                 if (i .eq. j) then
-                   this % J(j,i) = 1.0d0 - this % h * this % A(j,i) &
-                        &* DFDY(this % T(i), this % Y(i))
+
+                   this % J(i,j) = 1.0d0 - this % h * this % A(i,j) &
+                        &* DFDY(this % T(j), this % Y(j))
+
                 else
-                   this % J(j,i) = - this % h * this % A(j,i) &
-                        &* DFDY(this % T(i), this % Y(i))
+
+                   this % J(i,j) = - this % h * this % A(i,j) &
+                        &* DFDY(this % T(j), this % Y(j))
+
                 end if ! diagonal or not
 
              end if ! non-zero
 
           end do
+
        end do
-
+       
     type is (IRK)
-
+       
        ! Jacobian is a FULL  matrix
+       
        do i = 1, this % num_stages
+
           do j = 1, this % num_stages
 
              ! Evaluate only when the coeff is nonzero
-             if (this % A(j,i) .ne. 0.0d0) then
+             if (this % A(i,j) .ne. 0.0d0) then
 
                 if (i .eq. j) then
-                   this % J(j,i) = 1.0d0 - this % h * this % A(j,i) &
-                        &* DFDY(this % T(i), this % Y(i))
+
+                   this % J(i,j) = 1.0d0 - this % h * this % A(i,j) &
+                        &* DFDY(this % T(j), this % Y(j))
+
                 else
-                   this % J(j,i) = - this % h * this % A(j,i) &
-                        &* DFDY(this % T(i), this % Y(i))                   
+
+                   this % J(i,j) = - this % h * this % A(i,j) &
+                        &* DFDY(this % T(j), this % Y(j))                   
+                   
                 end if ! diagonal or not
 
              end if ! non-zero
 
           end do
+
        end do
 
     end select
@@ -719,13 +743,19 @@ contains
     integer :: i
 
     do i = 1, this  % num_stages
-       if (abs(this%C(i)-sum(this%A(i,:))).gt.5.0d-16) then
-          print *, "WARNING: sum(A(i,j)) != C(i)",i, this % num_stages
+
+       if (abs(this % C(i) - sum(this % A(i,:))) .gt. 5.0d-16) then
+
+          print *, "WARNING: sum(A(i,j)) != C(i)", i, this % num_stages
+
        end if
+
     end do
 
-    if ((sum(this%B)-1.0d0) .gt. 5.0d-16) then
+    if ((sum(this % B) - 1.0d0) .gt. 5.0d-16) then
+
        print *, "WARNING: sum(B) != 1", this % num_stages
+
     end if
     
   end subroutine check_butcher_tableau
@@ -781,7 +811,7 @@ contains
 
        ! advance the state to the current step
        call this % update_states(k, q, qdot)
-
+       
        ! set the stage values to zero
        call this % reset_stage_values()
 
@@ -799,14 +829,15 @@ contains
     integer, intent(in) :: k ! current time step
     real(8), intent(inout), dimension(:) :: q ! actual states
     real(8), intent(inout), dimension(:) :: qdot ! actual state
-
     integer :: i
 
     ! update the qdot value
-    qdot(k) = sum(this % B(:)*this % K(:))
+    qdot(k) = sum(this % B*this % K)
 
     ! update q (for first order ODE)
     q(k) = q(k-1) + this % h * qdot(k)
+
+    ! print *, dble(k-1) * this % h, "T:", this % t, "Sum:", sum(this % T)
     
   end subroutine update_states
 
@@ -910,7 +941,7 @@ program main
   
   q= 0.0d0; q(:,1) = 1.0
 
-  do kk = 1, 3
+  do kk = 3, 3
 
      ! Test for each RK stage
      call DIRKOBJ  % initialize(kk)
