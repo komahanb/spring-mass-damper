@@ -1,10 +1,10 @@
 default:
-	gfortran -c functions.f90
-	gfortran -c abstract_runge_kutta.f90
-	gfortran -c explicit_runge_kutta.f90
-	gfortran -c implicit_runge_kutta.f90
-	gfortran -c test_runge_kutta.f90
-	gfortran -o test *.o -llapack
+	f95 -c functions.f90
+	f95 -c abstract_runge_kutta.f90
+	f95 -c explicit_runge_kutta.f90
+	f95 -c implicit_runge_kutta.f90
+	f95 -c test_runge_kutta.f90
+	f95 -o test *.o -llapack
 
 clean: 
 	rm test *.o *.mod *~ 

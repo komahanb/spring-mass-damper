@@ -35,7 +35,7 @@ contains
     real(8), parameter :: onesixth = 1.0d0/6.0d0
     real(8), parameter :: oneeight = 1.0d0/8.0d0
     real(8), parameter :: one = 1.0d0
-    real(8), parameter :: alpha = half
+    real(8), parameter :: alpha = 2.0d0/3.0d0
 
     ! put the entries into the tableau
     if (this % num_stages .eq. 1) then 
@@ -146,19 +146,15 @@ contains
     do j = 1, this % num_stages
 
        ! stage time
-       this % T(j) = dble(k-2)*this % h + this % C(j)*this % h
+       this % T(j) = this % time + this % C(j)*this % h
 
        ! stage Y
-       ! this % Y(j) = q(k-1) + this % h*sum(this % A(j,:)*this % K(:))
-       ! this is skipped for j = 1 (initial value)
-       tmp = 0.0d0
-       do i = 1, j - 1
-          tmp = tmp + this % A(j,i)*this % K(j)
-       end do
-       this % Y(j) = q(k-1) +  this % h * tmp
+       this % Y(j) = q(k-1) + this % h*sum(this % A(j,:)*this % K(:))
 
        ! stage derivative
        this % K(j) =  F(this % T(j), this % Y(j))
+
+       ! print*, "j, t, y, F(t,y)",j, this % T(j), this % Y(j), this %K(j)
 
     end do
 

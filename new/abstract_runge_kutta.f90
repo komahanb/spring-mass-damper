@@ -30,7 +30,10 @@ module abstract_runge_kutta
      real(8) :: h = 0.1d0       ! default step size ( will reconsider
      ! when implementing adaptive step
      ! size)
-
+     
+     ! scalars to track integration time
+     real(8) :: time
+     
      ! The Butcher Tableau 
      real(8), dimension(:,:), allocatable :: A ! forms the coeff matrix
      real(8), dimension(:)  , allocatable :: B ! multiplies the state derivatives
@@ -95,12 +98,23 @@ contains
   ! Initialize the dirk datatype and construct the tableau
   !-------------------------------------------------------------------!
 
-  subroutine initialize(this, num_stages, h)
+  subroutine initialize(this, tinit, num_stages, h)
 
     class(RK) :: this
     integer, OPTIONAL, intent(in) :: num_stages
+    real(8), OPTIONAL, intent(in) :: tinit
     real(8), OPTIONAL, intent(in) :: h
 
+    !-----------------------------------------------------------------!
+    ! set the initial time
+    !-----------------------------------------------------------------!
+    
+    if (present(tinit)) then
+       this % time = tinit
+    else
+       print '("Using default start time : ",F8.3)', this % time
+    end if
+    
     !-----------------------------------------------------------------!
     ! set the order of integration
     !-----------------------------------------------------------------!
@@ -279,13 +293,20 @@ contains
     integer, intent(in) :: k ! current time step
     real(8), intent(inout), dimension(:) :: q ! actual states
     real(8), intent(inout), dimension(:) :: qdot ! actual state
-    integer :: i
+    
+    ! real(8), external :: F
 
-    ! update the qdot value
-    qdot(k) = sum(this % B * this % K)
-
+    ! increment the time
+    this % time = this % time + this % h
+    
     ! update q (for first order ODE)
-    q(k) = q(k-1) + this % h * qdot(k)
+    q(k) = q(k-1) + this % h *sum(this % B * this % K)
+    
+    ! update the qdot value
+    ! qdot(k) = F(this % time, q(k))
+    qdot(k) = qdot(k-1) + this % h**2 *sum(this % B * this % K)
+
+    !print*, this % time, q(k), qdot(k)
 
   end subroutine update_states
 
