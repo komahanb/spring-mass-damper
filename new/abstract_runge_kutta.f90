@@ -1,13 +1,12 @@
 !=====================================================================!
-!Module that implements Explicit, Implicit and Semi-implicit
-!Runge-Kutta integration schemes
+! An abstract module for Runge-Kutta integration
 !=====================================================================!
-!o This module is suitable for the First order ODEs: q'=f(q(t),t)
+! o This module is suitable for the First order ODEs: q'=f(q(t),t)
 !
-!o User needs to provide the implementation for the function 'f' in
+! o User needs to provide the implementation for the function 'f' in
 !   the module
 ! 
-!o Yet to implement the multivariate case
+! o Yet to implement the multivariate case
 !=====================================================================!
 ! Author: Komahan Boopathy (komahan@gatech.edu)
 !=====================================================================!
@@ -101,13 +100,30 @@ contains
     integer, OPTIONAL, intent(in) :: num_stages
     real(8), OPTIONAL, intent(in) :: h
 
+    !-----------------------------------------------------------------!
     ! set the order of integration
-    if (present(num_stages)) this % num_stages = num_stages
+    !-----------------------------------------------------------------!
+    
+    if (present(num_stages)) then
+       this % num_stages = num_stages
+    else
+       print '("Using default number of stages : ",i4)', this % num_stages
+    end if
 
+    !-----------------------------------------------------------------!
     ! set the user supplied initial step size
-    if (present(h)) this % h = h 
-
+    !-----------------------------------------------------------------!
+    
+    if (present(h)) then
+       this % h = h 
+    else
+       print '("Using default step size h : ", E9.3)', this % h
+    end if
+    
+    !-----------------------------------------------------------------!
     ! allocate space for the tableau
+    !-----------------------------------------------------------------!
+
     allocate(this % A(this % num_stages, this % num_stages))
     this % A = 0.0d0
 
@@ -117,33 +133,51 @@ contains
     allocate(this % C(this % num_stages))
     this % C = 0.0d0
 
+    !-----------------------------------------------------------------!
     ! allocate space for the stage derivatives
+    !-----------------------------------------------------------------!
+
     allocate(this % K(this % num_stages))
     this % K = 0.0d0
 
+    !-----------------------------------------------------------------!
     ! allocate space for the stage state
+    !-----------------------------------------------------------------!
+
     allocate(this % Y(this % num_stages))
     this % Y = 0.0d0
 
+    !-----------------------------------------------------------------!
     ! allocate space for the stage time
+    !-----------------------------------------------------------------!
+
     allocate(this % T(this % num_stages))
     this % T = 0.0d0
 
+    !-----------------------------------------------------------------!
     ! allocate space for the stage time
+    !-----------------------------------------------------------------!
+
     allocate(this % R(this % num_stages))
     this % R = 0.0d0
 
+    !-----------------------------------------------------------------!
     ! allocate space for the stage time
+    !-----------------------------------------------------------------!
+
     allocate(this % J(this % num_stages, this % num_stages))
     this % J = 0.0d0
 
-    call this % setup_butcher_tableau()
+    !-----------------------------------------------------------------!
+    ! this subroutine puts values into the Butcher tableau
+    !-----------------------------------------------------------------!
 
+    call this % setup_butcher_tableau()
+    
     !-----------------------------------------------------------------!
     ! sanity check
     !-----------------------------------------------------------------!
-
-    ! Check the Butcher tableau
+    
     call this % check_butcher_tableau()
 
   end subroutine initialize
@@ -151,7 +185,7 @@ contains
   !-------------------------------------------------------------------!
   ! Routine that checks if the Butcher Tableau entries are valid for
   ! the chosen number of stages/order
-  ! -------------------------------------------------------------------!
+  !--------------------------------------------------------------------!
   subroutine check_butcher_tableau(this)
 
     class(RK) :: this
@@ -262,10 +296,11 @@ contains
 
     class(RK) :: this
 
+    ! reset the variables that are computed during each time step    
     this % K = 0.0d0
     this % Y = 0.0d0
     this % T = 0.0d0
-
+    
     this % R = 0.0d0
     this % J = 0.0d0
 
