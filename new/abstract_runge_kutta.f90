@@ -46,16 +46,17 @@ module abstract_runge_kutta
 
    contains
 
-     ! Deferred common procedures
-     procedure(compute_stage_values_interface), deferred :: compute_stage_values
-     procedure(buthcher_interface), deferred :: setup_butcher_tableau
+     ! Implemented common procedures (visible to the user)
+     procedure :: initialize, finalize, integrate
+     
+     ! Implemented procedures (not callable by the user)
+     procedure, private :: update_states
+     procedure, private :: reset_stage_values
+     procedure, private :: check_butcher_tableau
 
-     ! Implemented common procedures
-     procedure :: initialize, finalize
-     procedure :: update_states
-     procedure :: integrate
-     procedure :: reset_stage_values
-     procedure :: check_butcher_tableau
+     ! Deferred common procedures
+     procedure(compute_stage_values_interface), private, deferred :: compute_stage_values
+     procedure(buthcher_interface), private, deferred :: setup_butcher_tableau
 
   end type RK
 
