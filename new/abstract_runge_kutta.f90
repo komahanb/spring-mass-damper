@@ -12,7 +12,7 @@
 ! Author: Komahan Boopathy (komahan@gatech.edu)
 !=====================================================================!
 
-module runge_kutta_class
+module abstract_runge_kutta
 
   implicit none
 
@@ -271,4 +271,4 @@ contains
 
   end subroutine reset_stage_values
 
-end module runge_kutta_class
+end module abstract_runge_kutta

@@ -4,9 +4,9 @@
 
 program main
   
-  use runge_kutta_class
-  use explicit_runge_kutta_class
-  use implcit_runge_kutta_class
+  use abstract_runge_kutta
+  use explicit_runge_kutta
+  use implicit_runge_kutta
   
   implicit none
 
