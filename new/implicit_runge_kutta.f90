@@ -365,7 +365,7 @@ contains
 
   !-------------------------------------------------------------------!
   ! Computes the stage jacobian and sets into the same instance
-  !          J[s x s] = [I(s)-h A(i,i) DFDY(T(i),Y(i))]
+  !          J(i,j) = [ 1 - h A(i,j) DFDY(T(j),Y(j))]
   !-------------------------------------------------------------------!
 
   subroutine compute_stage_jacobian(this)
