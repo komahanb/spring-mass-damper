@@ -148,11 +148,18 @@ contains
        ! stage time
        this % T(j) = this % time + this % C(j)*this % h
 
-       ! stage Y
+       ! stage Y (Most of the entries in A are zero, using SUM in
+       ! preference to intrinsic functions)
        this % Y(j) = q(k-1) + this % h*sum(this % A(j,:)*this % K(:))
-
+       
        ! stage derivative
        this % K(j) =  F(this % T(j), this % Y(j))
+
+       !if (j .eq. 1) then 
+          ! use the initial condition/previous time step values
+       !   this % K(j) = qdot(k-1)
+       !else
+       !end if
 
        ! print*, "j, t, y, F(t,y)",j, this % T(j), this % Y(j), this %K(j)
 

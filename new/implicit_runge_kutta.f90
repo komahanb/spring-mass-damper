@@ -18,16 +18,21 @@ module implicit_runge_kutta
   
   type, extends(RK) :: IRK
 
+     integer :: max_newton = 20
+     real(8) :: tol = 1.0d-12
+     
    contains
 
-     ! common implicit routines
+     private
+
+     ! implement/override the abstract class routines
+     procedure :: setup_butcher_tableau => ButcherIRK
      procedure :: compute_stage_values => compute_stage_values_implicit
+
+     ! Routines that are common to IRK and its subtypes
      procedure :: newton_solve
      procedure :: compute_stage_residual
      procedure :: compute_stage_jacobian
-
-     ! routines specialized for this type
-     procedure :: setup_butcher_tableau => ButcherIRK
 
   end type IRK
 
@@ -39,6 +44,9 @@ module implicit_runge_kutta
 
    contains
 
+     private
+
+     ! implement/override the abstract class routines
      procedure :: setup_butcher_tableau => ButcherDIRK
 
   end type DIRK
@@ -122,7 +130,8 @@ contains
     else
        
        print *, this % num_stages
-       stop "DIRK Butcher tableau is not implemented for the requested order"
+       stop "DIRK Butcher tableau is not implemented for the requested&
+            & order/stages"
 
     end if
 
@@ -224,7 +233,8 @@ contains
     else
 
        print *, this % num_stages
-       stop "IRK Butcher tableau is not implemented for the requested order/stage"
+       stop "IRK Butcher tableau is not implemented for the requested &
+            & order/stage"
 
     end if
 
@@ -263,20 +273,25 @@ contains
 
   !-------------------------------------------------------------------!
   ! Solve nonlinear stage equations using Newton's method at each time
-  ! step
-  !-------------------------------------------------------------------!
+  ! step.
+  !
+  ! q_{k,i} = q_{k} + h \sum_{j=1}^s {a_{i}j f(t_{k,j}, q_{k,j})
+  ! i = 1,\ldots,s 
+  !
+  ! This yields $s$ equations and $s$ unknown stage values, $q_{k,i}$,
+  ! that are solved using Newton's method at each time step
+  ! -------------------------------------------------------------------!
 
   subroutine newton_solve(this, qk)
     
     class(IRK) :: this
     real(8), intent(in) :: qk
     real(8) :: dQ(this % num_stages)
-    integer :: max_newton = 20
     integer :: n, jj
     integer :: ipiv(this %num_stages), info
     logical :: conv = .false.
     
-    newton: do n = 1, max_newton
+    newton: do n = 1, this % max_newton
        
        ! Get the residual of the function
        call this % compute_stage_residual(qk)
@@ -285,28 +300,38 @@ contains
        call this % compute_stage_jacobian()
 
        ! call lapack to solve the stage values system
-       dq = - this % R
+       dq = this % R
        call DGESV(this % num_stages, 1, this % J, this % num_stages, &
             & IPIV, dq, this % num_stages, INFO)
 
        ! check stop (change this to norm2 when implementing
        ! multivariate case)
-       if (norm2(this % R) .le. 1.0d-12 .or. norm2(dq) .le. 1.0d-12) then
+       if (norm2(this % R) .le. this % tol .or. &
+            & norm2(dq) .le. this % tol) then
           conv = .true.
           exit newton
        end if
        
-       ! update q
-       this % Y = this % Y + dQ
+       ! update q(k,i)
+       this % Y = this % Y - dQ
        
     end do newton
 
-    if (.not.conv) print *, "Newton solve failed after", n
-
+    if (.not. conv) then
+       print '("Newton solve failed : iters = ", i3," |R| = ",E10.3," &
+            &|dq| = ",E10.3)',&
+            & n, norm2(this % R), norm2(dq)
+    end if
+   
   end subroutine newton_solve
   
   !-------------------------------------------------------------------!
-  ! Computes the stage residual and sets into the same instance
+  ! Computes the stage residual for the set stage state Y (comes from
+  ! Newton's iteration) and sets into the same instance
+  !
+  ! R_{i}= q_{k,i} - q_{k} - h \sum_{j=1}^s {a_{ij} f(t_{k,j}, q_{k,j})
+  ! i = 1,\ldots,s 
+  !
   !-------------------------------------------------------------------!
   
   subroutine compute_stage_residual(this, qk)
@@ -318,22 +343,20 @@ contains
 
     do i = 1, this % num_stages
 
-       ! this could be the last newton iteration, so we store the
-       ! function call value; may be there is better way to handle
-       ! this logic
+       ! Make all the function calls and store
 
-       tmp = 0.0d0
-
+       ! Check for non-zero Aij and then evaluate the function
+       
+       !$OMP DO
        do j = 1, this % num_stages
-
           this % K(j) = F(this % T(j), this % Y(j))
-
-          tmp =  tmp + this % A(i,j) * this % K(j)
-
        end do
-
-       ! yields num_stages equations
-
+       !$OMP END DO
+       
+       ! store the summation
+       tmp = sum(this % A(i,:)*this % K(:))
+       
+       ! compute 's' stage residuals
        this % R(i) = this % Y(i) - qk - this % h * tmp
 
     end do
@@ -350,68 +373,35 @@ contains
     class(IRK) :: this
     integer :: i, j
     real(8), external :: DFDY
+    
+    do i = 1, this % num_stages
 
-    select type (this)
+       do j = 1, this % num_stages
 
-    type is (DIRK)
+          if (i .eq. j) then
 
-       ! Jacobian is a lower triangle matrix
-       do i = 1, this % num_stages
+             ! compute the diagonal entry
+             this % J(i,j) = 1.0d0 - this % h * this % A(i,j) &
+                  &* DFDY(this % T(j), this % Y(j))
 
-          do j = 1, i 
+          else
 
-             ! Evaluate only when the coeff is nonzero
+             ! off diagonal entry
+             
+             ! compute only when the coeff is nonzero
              if (this % A(i,j) .ne. 0.0d0) then
 
-                if (i .eq. j) then
-
-                   this % J(i,j) = 1.0d0 - this % h * this % A(i,j) &
-                        &* DFDY(this % T(j), this % Y(j))
-
-                else
-
-                   this % J(i,j) = - this % h * this % A(i,j) &
-                        &* DFDY(this % T(j), this % Y(j))
-
-                end if ! diagonal or not
+                this % J(i,j) = - this % h * this % A(i,j) &
+                     &* DFDY(this % T(j), this % Y(j))
 
              end if ! non-zero
 
-          end do
+          end if  ! diagonal or not
 
        end do
 
-    type is (IRK)
-
-       ! Jacobian is a FULL  matrix
-
-       do i = 1, this % num_stages
-
-          do j = 1, this % num_stages
-
-             ! Evaluate only when the coeff is nonzero
-             if (this % A(i,j) .ne. 0.0d0) then
-
-                if (i .eq. j) then
-
-                   this % J(i,j) = 1.0d0 - this % h * this % A(i,j) &
-                        &* DFDY(this % T(j), this % Y(j))
-
-                else
-
-                   this % J(i,j) = - this % h * this % A(i,j) &
-                        &* DFDY(this % T(j), this % Y(j))                   
-
-                end if ! diagonal or not
-
-             end if ! non-zero
-
-          end do
-
-       end do
-
-    end select
-
+    end do
+       
   end subroutine compute_stage_jacobian
 
 end module implicit_runge_kutta

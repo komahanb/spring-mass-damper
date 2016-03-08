@@ -27,12 +27,9 @@ module abstract_runge_kutta
 
      integer :: num_stages = 1  ! default number of stages
      integer :: order           ! order of accuracy
-     real(8) :: h = 0.1d0       ! default step size ( will reconsider
-     ! when implementing adaptive step
-     ! size)
-     
-     ! scalars to track integration time
-     real(8) :: time
+
+     real(8) :: h = 0.1d0       ! default step size (will reconsider when implementing adaptive step size)
+     real(8) :: time            ! scalar to track integration time
      
      ! The Butcher Tableau 
      real(8), dimension(:,:), allocatable :: A ! forms the coeff matrix
@@ -292,21 +289,22 @@ contains
     class(RK) :: this
     integer, intent(in) :: k ! current time step
     real(8), intent(inout), dimension(:) :: q ! actual states
-    real(8), intent(inout), dimension(:) :: qdot ! actual state
-    
+    real(8), intent(inout), dimension(:) :: qdot ! actual state    
     ! real(8), external :: F
 
     ! increment the time
     this % time = this % time + this % h
     
     ! update q (for first order ODE)
-    q(k) = q(k-1) + this % h *sum(this % B * this % K)
+    q(k) = q(k-1) + this % h*sum(this % B * this % K)
     
     ! update the qdot value
     ! qdot(k) = F(this % time, q(k))
-    qdot(k) = qdot(k-1) + this % h**2 *sum(this % B * this % K)
 
-    !print*, this % time, q(k), qdot(k)
+    ! unsure about this formula
+    ! qdot(k) = qdot(k-1) + this % h*sum(this % B * this % K)
+
+    ! print*, this % time, q(k), qdot(k)
 
   end subroutine update_states
 
