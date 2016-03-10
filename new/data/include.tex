@@ -1,0 +1,49 @@
+\usepackage{appendix} %http://www.tex.ac.uk/cgi-bin/texfaq2html?label=appendix
+\usepackage{amsmath,amssymb,latexsym,float,epsfig}
+\usepackage{framed,color,url,fancybox,fullpage,booktabs,subfigure,wrapfig,chngpage,setspace}
+\newcommand{\ssection}[1]{\section[#1]{\centering\normalfont\scshape #1}}
+\newcommand{\ssubsection}[1]{\subsection[#1]{\raggedright\normalfont\itshape #1}}
+\newcommand\norm[1]{\left\lVert#1 \right\rVert}
+\newcommand{\e}{\mathrm{e}}
+\newcommand{\pderiv}[2]{\frac{\partial #1}{\partial #2}}
+%\numberwithin{equation}{section}
+%\numberwithin{figure}{section}
+%\graphicspath{{./figures/}}
+\usepackage{epstopdf,fancyvrb,cite,hyperref,jvlisting}
+%\usepackage[options]{mcode}
+
+\usepackage{pdflscape}%http://texblog.org/2007/11/10/landscape-in-latex/
+
+% Define commands 
+\newcommand{\half}{\ensuremath{\frac{1}{2}}}
+\newcommand{\bea}{\begin{eqnarray}}
+\newcommand{\eea}{\end{eqnarray}}
+\newcommand{\beq}{\begin{equation}}
+\newcommand{\eeq}{\end{equation}}
+\newcommand{\bdm}{\begin{displaymath}}
+\newcommand{\edm}{\end{displaymath}}
+\newcommand{\etal}[0]{{\em et al.}}
+\newcommand{\pd}[2]{\dfrac{\partial #1}{\partial #2}}
+\newcommand{\pf}[2]{\dfrac{d #1}{d #2}}
+\newcommand{\pdt}[2]{\dfrac{\partial^2 #1}{\partial #2^2}}
+\newcommand{\pft}[2]{\dfrac{d^2 #1}{d #2^2}}
+\newcommand{\pdtno}[2]{\dfrac{\partial^2 #1}{\partial #2}}
+\newcommand{\pdd}[3]{\dfrac{\partial^2 #1}{\partial #2 \partial #3}}
+\newcommand{\pff}[3]{\dfrac{d^2 #1}{d #2 d #3}}
+
+
+\renewcommand\floatpagefraction{0.99}
+\renewcommand\topfraction{0.99}
+\renewcommand\bottomfraction{0.99}
+\renewcommand\textfraction{0.0}
+
+\usepackage{titling}
+\setlength{\droptitle}{-1in}   % This is your set screw
+
+% For \url{SOME_URL}, links SOME_URL to the url SOME_URL
+\providecommand*\url[1]{\href{#1}{#1}}
+% Same as above, but pretty-prints SOME_URL in teletype fixed-width font
+\renewcommand*\url[1]{\href{#1}{\texttt{#1}}}
+
+% For \email{ADDRESS}, links ADDRESS to the url mailto:ADDRESS
+\providecommand*\email[1]{\href{mailto:#1}{#1}}
