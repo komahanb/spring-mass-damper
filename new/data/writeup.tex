@@ -47,7 +47,7 @@ The stage equations to be solved are as follows:
 \begin{equation}\label{stage_explicit}
   q_{k,i} = q_{k} + h \sum_{j=1}^s a_{ij} f(t_{k,j}, q_{k,j}) \quad i = 1,\ldots,s 
 \end{equation}
-Here, $t_{k,i}$ is provided by the formula:
+Here, $t_{k,j}$ is provided by the formula:
 \begin{equation}
   t_{k,j} = t_k + c_j h
 \end{equation}
@@ -72,7 +72,7 @@ same line of discussion, DIRK offers greater computational savings.
 Once the stage states $q_{k,i}$ are found, they can be used to find the next
 value of the state as follows:
 \begin{equation}
-  q_{k+1} = q_{k} + \sum_{j=1}^s b_j f(k,j,qk,j)
+  q_{k+1} = q_{k} + \sum_{i=1}^s b_i f(t_{k,i},q_{k,i})
 \end{equation}
 
 \subsection{Two-Stage IRK Example}
@@ -110,7 +110,7 @@ Newton's method.
 
 Consider first order differential equation in descriptor form
 \begin{equation}
-  R(t, q, \pf{q}{t}) = 0
+  \mathbf{R}(t, q, \pf{q}{t}) = 0
 \end{equation}
 
 \paragraph{Stage Equations:}
@@ -118,31 +118,35 @@ The key is to write Eq.~\ref{stage_explicit} in the following form
 \begin{equation}\label{stage_implicit}
   q_{k,i} = q_{k} + h \sum_{j=1}^s a_{ij} \dot{q}_{k,j} \quad i = 1,\ldots,s 
 \end{equation}
-
-\paragraph{Residual of Stage Equations:}
-
-The residual of the stage equations:
+The governing equation in descriptor form for different stages $i$ at the $k-$th time-step takes the form:
 \begin{equation}
-  F_i = q_{k,i} - q_{k} - h \sum_{j=1}^s a_{ij} \dot{q}_{k,i} \quad i = 1,\ldots,s 
+  \mathbf{R}\left(t_{k,i}, q_{k,i}, \dot{q}_{k,i}\right) = 0
 \end{equation}
-
-\paragraph{Jacobian of Stage Equations:}
-
-The jacobian of the stage equations:
+Using Eq.~\eqref{stage_implicit}, this becomes
 \begin{equation}
-  \begin{split}
-    J_{ii} = 1 - h a_{ii} \pd{\dot{q}(t_{k,i}, q_{k,i})}{q} \quad \forall i = j \\
-    J_{ij} = - h a_{ij} \pd{\dot{q}(t_{k,j}, q_{k,j})}{q} \quad \forall i \ne j
-  \end{split}
+  \mathbf{R}\left(t_{k,i}, q_k + h \sum_{j=1}^s a_{ij}\dot{q}_{k,j}, \dot{q}_{k,i}\right) = 0
+\end{equation}
+In this equation we need to solve for $q_{k,i}$ values. We use
+Newtons's method to solve for these stage derivatives. To aid the
+solution, we need the Jacobian of the governing equation.
+
+\begin{equation}
+  \mathbf{J} = \pd{\mathbf{R}\left(t_{k,i},{q}_{k,i},\dot{q}_{k,i}\right)}{\dot{q}}
 \end{equation}
 
 \paragraph{Time Marching:}
 
-Once the stage derivatives $\dot{q}_{j}$ are found, they can be used to find the next
-value of the state as follows:
+Once the stage derivatives $\dot{q}_{j}$ are found, they can be used
+to find the next value of the state as follows:
 \begin{equation}
-  q_{k+1} = q_{k} + \sum_{j=1}^s b_j \dot{q}_j
+  q_{k+1} = q_{k} + \sum_{i=1}^s b_i \dot{q}_{k,i}
 \end{equation}
+From an implementation point of view, the only changes occur within
+user implemented  routines, compared to the explicit RK scheme:
+\begin{enumerate}
+\item \texttt{compute\_stage\_residual} and
+\item \texttt{compute\_stage\_jacobian}
+\end{enumerate}
 
 \clearpage
 
@@ -195,3 +199,20 @@ value of the state as follows:
 
 %\subsection{Runge-Kutta for Descriptor Systems}
 \end{document}
+
+\paragraph{Residual of Stage Equations:}
+
+The residual of the stage equations:
+\begin{equation}
+  F_i = q_{k,i} - q_{k} - h \sum_{j=1}^s a_{ij} \dot{q}_{k,j} \quad i = 1,\ldots,s 
+\end{equation}
+
+\paragraph{Jacobian of Stage Equations:}
+
+The jacobian of the stage equations:
+\begin{equation}
+  \begin{split}
+    J_{ii} = 1 - h a_{ii} \pd{\dot{q}(t_{k,i}, q_{k,i})}{q} \quad \forall i = j \\
+    J_{ij} = - h a_{ij} \pd{\dot{q}(t_{k,j}, q_{k,j})}{q} \quad \forall i \ne j
+  \end{split}
+\end{equation}
