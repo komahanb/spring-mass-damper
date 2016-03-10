@@ -10,12 +10,12 @@ real(8) pure function F(time, q)
   real(8), intent(in)  :: q
 
   !  F = exp(time)
+  !  F = cos(time)
 
-  F = cos(time)
+  F = sin(q) + cos(time)
 
-  !  F = tan(q) + 1.0d0 
-  !  F = -2.0d0*time*q
-
+  ! F = tan(q) + 1.0d0 
+  ! F = -2.0d0*time*q
   ! F = cos(q) - sin(time)
   ! F = qdot - cos(time)
   ! F = cos(q) - sin(time)
@@ -34,7 +34,8 @@ real(8) pure function R(time, q, qdot)
   real(8), intent(in)  :: time
   real(8), intent(in)  :: q, qdot
 
-  R = qdot - cos(time)
+  !  R = qdot - cos(time)
+  R = qdot - sin(q) - cos(time)
 
 end function R
 
@@ -49,7 +50,7 @@ real(8) pure function DFDQ(time, q)
   real(8), intent(in)  :: time
   real(8), intent(in)  :: q
 
-  DFDQ = 0.0d0
+  DFDQ = cos(q)
 
 end function DFDQ
 
@@ -57,15 +58,15 @@ end function DFDQ
 ! DRDQDOT of the function
 !-------------------------------------------------------------------!
 
-real(8) pure function DRDQDOT(time, q, qdot)
+real(8)  function DRDQDOT(time, q, qdot)
 
   implicit none
 
   real(8), intent(in)  :: time
   real(8), intent(in)  :: q, qdot
 
-  DRDQDOT = 1.0d0 
-  
+  DRDQDOT = 1.0d0
+
 end function DRDQDOT
 
 

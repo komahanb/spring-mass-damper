@@ -45,7 +45,7 @@ module abstract_runge_kutta
      real(8), dimension(:,:), allocatable :: J ! stage jacobian
      
      ! The form of the governing equation
-     logical :: descriptor_form = .false.
+     logical :: descriptor_form = .true.
      
    contains
 
