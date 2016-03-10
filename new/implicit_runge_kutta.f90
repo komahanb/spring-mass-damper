@@ -365,14 +365,14 @@ contains
 
   !-------------------------------------------------------------------!
   ! Computes the stage jacobian and sets into the same instance
-  !          J(i,j) = [ 1 - h A(i,j) DFDY(T(j),Y(j))]
+  !          J(i,j) = [ 1 - h A(i,j) DFDQ(T(j),Y(j))]
   !-------------------------------------------------------------------!
 
   subroutine compute_stage_jacobian(this)
 
     class(IRK) :: this
     integer :: i, j
-    real(8), external :: DFDY
+    real(8), external :: DFDQ
     
     do i = 1, this % num_stages
 
@@ -382,7 +382,7 @@ contains
 
              ! compute the diagonal entry
              this % J(i,j) = 1.0d0 - this % h * this % A(i,j) &
-                  &* DFDY(this % T(j), this % Y(j))
+                  &* DFDQ(this % T(j), this % Y(j))
 
           else
 
@@ -392,7 +392,7 @@ contains
              if (this % A(i,j) .ne. 0.0d0) then
 
                 this % J(i,j) = - this % h * this % A(i,j) &
-                     &* DFDY(this % T(j), this % Y(j))
+                     &* DFDQ(this % T(j), this % Y(j))
 
              end if ! non-zero
 
