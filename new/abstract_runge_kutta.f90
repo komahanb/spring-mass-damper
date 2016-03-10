@@ -301,8 +301,6 @@ contains
     ! update q (for first order ODE)
     q(k) = q(k-1) + this % h*sum(this % B * this % K)
     
-    ! print*, this % time, q(k), qdot(k)
-
   end subroutine update_states
 
   !-------------------------------------------------------------------!
