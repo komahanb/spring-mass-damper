@@ -18,7 +18,7 @@ module abstract_runge_kutta
   private
 
   public :: RK
-
+  
   !-------------------------------------------------------------------!
   ! Abstract Runge-Kutta type
   !-------------------------------------------------------------------!
@@ -43,7 +43,10 @@ module abstract_runge_kutta
 
      real(8), dimension(:)  , allocatable :: R ! stage residual
      real(8), dimension(:,:), allocatable :: J ! stage jacobian
-
+     
+     ! The form of the governing equation
+     logical :: descriptor_form = .false.
+     
    contains
 
      ! Implemented common procedures (visible to the user)
@@ -298,12 +301,6 @@ contains
     ! update q (for first order ODE)
     q(k) = q(k-1) + this % h*sum(this % B * this % K)
     
-    ! update the qdot value
-    ! qdot(k) = F(this % time, q(k))
-
-    ! unsure about this formula
-    ! qdot(k) = qdot(k-1) + this % h*sum(this % B * this % K)
-
     ! print*, this % time, q(k), qdot(k)
 
   end subroutine update_states
