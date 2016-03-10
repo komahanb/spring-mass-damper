@@ -3,6 +3,8 @@
 !-------------------------------------------------------------------!
 
 real(8) pure function F(time, q)
+  
+  implicit none
 
   real(8), intent(in)  :: time
   real(8), intent(in)  :: q
@@ -27,6 +29,8 @@ end function F
 
 real(8) pure function R(time, q, qdot)
 
+  implicit none
+
   real(8), intent(in)  :: time
   real(8), intent(in)  :: q, qdot
 
@@ -40,10 +44,12 @@ end function R
 
 real(8) pure function DFDQ(time, q)
 
+  implicit none
+
   real(8), intent(in)  :: time
   real(8), intent(in)  :: q
 
-  DFDY = 0.0d0
+  DFDQ = 0.0d0
 
 end function DFDQ
 
@@ -53,10 +59,12 @@ end function DFDQ
 
 real(8) pure function DRDQDOT(time, q, qdot)
 
+  implicit none
+
   real(8), intent(in)  :: time
   real(8), intent(in)  :: q, qdot
 
-  DFDQDOT = 1.0d0 
+  DRDQDOT = 1.0d0 
   
 end function DRDQDOT
 

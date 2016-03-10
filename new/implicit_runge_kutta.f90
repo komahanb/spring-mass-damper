@@ -258,16 +258,18 @@ contains
     end do
     
     ! Guess the solution for stage states
-    this % Y(:) = 1.0d0
+    if (.not. this % descriptor_form) then
+       this % Q(:) = 1.0d0
+    else 
+       this % QDOT(:) = 1.0d0 
+    end if
     
     ! solve the non linear stage equations using Newton's method for
     ! the actual stage states 
-    ! S function calls
-    ! S jacobian calls
-    ! Times the number of newton iterations (N)
+
     call this % newton_solve(q(k-1))
 
-    ! at this point Y, K, T are finalized--just like ERK
+    ! at this point Q, QDOT, T are finalized--just like ERK
     
   end subroutine compute_stage_values_implicit
 
@@ -312,9 +314,14 @@ contains
           exit newton
        end if
        
-       ! update q(k,i)
-       this % Y = this % Y - dQ
-       
+       if (.not. this % descriptor_form) then
+          ! update q(k,i)
+          this % Q = this % Q - dQ
+       else
+          ! update qdot(k,i)
+          this % QDOT = this % QDOT - dQ
+       end if
+
     end do newton
 
     if (.not. conv) then
@@ -339,27 +346,35 @@ contains
     class(IRK) :: this
     real(8) :: qk, tmp
     integer :: i, j
-    real(8), external :: F
+    real(8), external :: F, R
 
-    do i = 1, this % num_stages
+    if (.not. this % descriptor_form) then
 
-       ! Make all the function calls and store
-
-       ! Check for non-zero Aij and then evaluate the function
-       
-       !$OMP DO
-       do j = 1, this % num_stages
-          this % K(j) = F(this % T(j), this % Y(j))
+       do i = 1, this % num_stages
+          
+          ! compute the stage derivatives for the guessed Q
+          do j = 1, this % num_stages
+             this % QDOT(j) = F(this % T(j), this % Q(j))
+          end do
+          
+          ! compute the stage residuals
+          this % R(i) = this % Q(i) - qk - this % h * sum(this % A(i,:)*this % QDOT(:))
+          
        end do
-       !$OMP END DO
-       
-       ! store the summation
-       tmp = sum(this % A(i,:)*this % K(:))
-       
-       ! compute 's' stage residuals
-       this % R(i) = this % Y(i) - qk - this % h * tmp
 
-    end do
+    else
+       
+       do i = 1, this % num_stages
+          
+          ! compute the stage states for the guessed QDOT
+          this % Q(i) = qk + this % h*sum(this % A(i,:)*this % QDOT)
+          
+          ! compute the stage residuals
+          this % R(i) = R(this % T(i), this % Q(i), this % QDOT(i))
+          
+       end do
+       
+    end if
 
   end subroutine compute_stage_residual
 
@@ -369,38 +384,70 @@ contains
   !-------------------------------------------------------------------!
 
   subroutine compute_stage_jacobian(this)
-
+    
     class(IRK) :: this
     integer :: i, j
-    real(8), external :: DFDQ
-    
-    do i = 1, this % num_stages
+    real(8), external :: DFDQ, DRDQDOT
 
-       do j = 1, this % num_stages
+    if (.not. this % descriptor_form) then
 
-          if (i .eq. j) then
+       do i = 1, this % num_stages
 
-             ! compute the diagonal entry
-             this % J(i,j) = 1.0d0 - this % h * this % A(i,j) &
-                  &* DFDQ(this % T(j), this % Y(j))
+          do j = 1, this % num_stages
 
-          else
+             if (i .eq. j) then
 
-             ! off diagonal entry
-             
-             ! compute only when the coeff is nonzero
-             if (this % A(i,j) .ne. 0.0d0) then
+                ! compute the diagonal entry
+                this % J(i,j) = 1.0d0 - this % h * this % A(i,j) &
+                     &* DFDQ(this % T(j), this % Q(j))
 
-                this % J(i,j) = - this % h * this % A(i,j) &
-                     &* DFDQ(this % T(j), this % Y(j))
+             else
 
-             end if ! non-zero
+                ! off diagonal entry
 
-          end if  ! diagonal or not
+                ! compute only when the coeff is nonzero
+                if (this % A(i,j) .ne. 0.0d0) then
+
+                   this % J(i,j) = - this % h * this % A(i,j) &
+                        &* DFDQ(this % T(j), this % Q(j))
+
+                end if ! non-zero
+
+             end if  ! diagonal or not
+
+          end do
 
        end do
 
-    end do
+    else
+
+       do i = 1, this % num_stages
+
+          do j = 1, this % num_stages
+
+             if (i .eq. j) then
+
+                ! compute the diagonal entry
+                this % J(i,j) = DRDQDOT(this % T(j), this % Q(j), this % QDOT(j))
+
+             else
+
+                ! off diagonal entry
+
+                ! compute only when the coeff is nonzero
+                if (this % A(i,j) .ne. 0.0d0) then
+
+                   this % J(i, j) = DRDQDOT(this % T(j), this % Q(j), this % QDOT(j))
+
+                end if ! non-zero
+
+             end if  ! diagonal or not
+
+          end do
+
+       end do
+
+    end if
        
   end subroutine compute_stage_jacobian
 

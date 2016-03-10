@@ -38,8 +38,8 @@ module abstract_runge_kutta
 
      ! The stage time and its corresponding derivatives
      real(8), dimension(:)  , allocatable :: T ! the corresponding stage time
-     real(8), dimension(:)  , allocatable :: Y ! the corresponding state
-     real(8), dimension(:)  , allocatable :: K ! the stage derivatives K = F(T,Y)
+     real(8), dimension(:)  , allocatable :: Q ! the corresponding state
+     real(8), dimension(:)  , allocatable :: QDOT ! the stage derivatives K = F(T,Q)
 
      real(8), dimension(:)  , allocatable :: R ! stage residual
      real(8), dimension(:,:), allocatable :: J ! stage jacobian
@@ -152,15 +152,15 @@ contains
     ! allocate space for the stage derivatives
     !-----------------------------------------------------------------!
 
-    allocate(this % K(this % num_stages))
-    this % K = 0.0d0
+    allocate(this % QDOT(this % num_stages))
+    this % QDOT = 0.0d0
 
     !-----------------------------------------------------------------!
     ! allocate space for the stage state
     !-----------------------------------------------------------------!
 
-    allocate(this % Y(this % num_stages))
-    this % Y = 0.0d0
+    allocate(this % Q(this % num_stages))
+    this % Q = 0.0d0
 
     !-----------------------------------------------------------------!
     ! allocate space for the stage time
@@ -238,9 +238,9 @@ contains
     if(allocated(this % C)) deallocate(this % C)
 
     ! clear stage values
-    if(allocated(this % K)) deallocate(this % K)
+    if(allocated(this % QDOT)) deallocate(this % QDOT)
     if(allocated(this % T)) deallocate(this % T)
-    if(allocated(this % Y)) deallocate(this % Y)
+    if(allocated(this % Q)) deallocate(this % Q)
 
     ! clear the stage residual and jacobian
     if(allocated(this % R)) deallocate(this % R)
@@ -293,13 +293,12 @@ contains
     integer, intent(in) :: k ! current time step
     real(8), intent(inout), dimension(:) :: q ! actual states
     real(8), intent(inout), dimension(:) :: qdot ! actual state    
-    ! real(8), external :: F
 
     ! increment the time
     this % time = this % time + this % h
     
     ! update q (for first order ODE)
-    q(k) = q(k-1) + this % h*sum(this % B * this % K)
+    q(k) = q(k-1) + this % h*sum(this % B * this % QDOT)
     
   end subroutine update_states
 
@@ -312,8 +311,8 @@ contains
     class(RK) :: this
 
     ! reset the variables that are computed during each time step    
-    this % K = 0.0d0
-    this % Y = 0.0d0
+    this % QDOT = 0.0d0
+    this % Q = 0.0d0
     this % T = 0.0d0
     
     this % R = 0.0d0

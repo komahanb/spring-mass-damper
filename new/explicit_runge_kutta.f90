@@ -142,28 +142,40 @@ contains
     real(8), external :: F
     
     ! Stage derivatives are explicitly found at each iteration
+    
+!!$    if (.not. this % descriptor_form) then
 
-    do j = 1, this % num_stages
+       do j = 1, this % num_stages
 
-       ! stage time
-       this % T(j) = this % time + this % C(j)*this % h
+          ! stage time
+          this % T(j) = this % time + this % C(j)*this % h
 
-       ! stage Y (Most of the entries in A are zero, using SUM in
-       ! preference to intrinsic functions)
-       this % Y(j) = q(k-1) + this % h*sum(this % A(j,:)*this % K(:))
-       
-       ! stage derivative
-       this % K(j) =  F(this % T(j), this % Y(j))
+          ! stage Y (Most of the entries in A are zero, using SUM in
+          ! preference to intrinsic functions)
+          this % Q(j) = q(k-1) + this % h*sum(this % A(j,:)*this % QDOT(:))
 
-       !if (j .eq. 1) then 
-          ! use the initial condition/previous time step values
-       !   this % K(j) = qdot(k-1)
-       !else
-       !end if
+          ! stage derivative
+          this % QDOT(j) =  F(this % T(j), this % Q(j))
 
-       ! print*, "j, t, y, F(t,y)",j, this % T(j), this % Y(j), this %K(j)
-
-    end do
+       end do
+!!$
+!!$    else
+!!$
+!!$       do j = 1, this % num_stages
+!!$
+!!$          ! stage time
+!!$          this % T(j) = this % time + this % C(j)*this % h
+!!$
+!!$          ! stage Y (Most of the entries in A are zero, using SUM in
+!!$          ! preference to intrinsic functions)
+!!$          this % Q(j) = q(k-1) + this % h*sum(this % A(j,:)*this % QDOT(:))
+!!$
+!!$          ! stage derivative
+!!$          this % QDOT(j) =  F(this % T(j), this % Q(j))
+!!$
+!!$       end do
+!!$
+!!$    end if
 
   end subroutine compute_stage_valuesERK
 
