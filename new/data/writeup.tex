@@ -197,7 +197,42 @@ user implemented  routines, compared to the explicit RK scheme:
     end do newton
 \end{verbatim}
 
-%\subsection{Runge-Kutta for Descriptor Systems}
+\section{Results}
+
+\begin{figure}[H]
+  \begin{minipage}{0.33\linewidth}
+    \includegraphics[width=\linewidth]{{dae_descriptor_explicit_stage1_h0.1}.eps}
+  \end{minipage}
+  \begin{minipage}{0.33\linewidth}
+    \includegraphics[width=\linewidth]{{dae_descriptor_explicit_stage2_h0.1}.eps}
+  \end{minipage}
+  \begin{minipage}{0.33\linewidth}
+    \includegraphics[width=\linewidth]{{dae_descriptor_explicit_stage3_h0.1}.eps}
+  \end{minipage}
+  \begin{minipage}{0.33\linewidth}
+    \includegraphics[width=\linewidth]{{dae_descriptor_explicit_stage1_h0.25}.eps}
+  \end{minipage}
+  \begin{minipage}{0.33\linewidth}
+    \includegraphics[width=\linewidth]{{dae_descriptor_explicit_stage2_h0.25}.eps}
+  \end{minipage}
+  \begin{minipage}{0.33\linewidth}
+    \includegraphics[width=\linewidth]{{dae_descriptor_explicit_stage3_h0.25}.eps}
+  \end{minipage}
+  \begin{minipage}{0.33\linewidth}
+    \includegraphics[width=\linewidth]{{dae_descriptor_explicit_stage1_h0.5}.eps}
+  \end{minipage}
+  \begin{minipage}{0.33\linewidth}
+    \includegraphics[width=\linewidth]{{dae_descriptor_explicit_stage2_h0.5}.eps}
+  \end{minipage}
+  \begin{minipage}{0.33\linewidth}
+    \includegraphics[width=\linewidth]{{dae_descriptor_explicit_stage3_h0.5}.eps}
+  \end{minipage}
+  \caption{A comparison of solutions obtained by solving descriptor
+    system and explicit system of first order differential equations
+    for different step sizes and number of intermediate RK stages for the function $\dot{q}=\sin{q}+\cos{t}$.}
+\end{figure}
+
+
 \end{document}
 
 \paragraph{Residual of Stage Equations:}
