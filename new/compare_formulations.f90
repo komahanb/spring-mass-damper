@@ -116,7 +116,8 @@ program main
 
      ! Find the error
      do i = 1, N +1
-        write(90, *) tinit + dble(i-1)*h, q(kk,i), dirkobj % fcnt/(N+1), dirkobj % fgcnt/(N+1)
+        write(90, *) tinit + dble(i-1)*h, q(kk,i), &
+             & dirkobj % fcnt/(N+1), dirkobj % fgcnt/(N+1)
      end do
 
      close(90)

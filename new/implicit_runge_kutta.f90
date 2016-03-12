@@ -413,7 +413,7 @@ contains
                 this % J(i,j) = 1.0d0 - this % h * this % A(i,j) &
                      &* DFDQ(this % T(j), this % Q(j))
 
- !               this % fgcnt = this % fgcnt + 1
+                this % fgcnt = this % fgcnt + 1
 
              else
 
@@ -425,7 +425,7 @@ contains
                    this % J(i,j) = - this % h * this % A(i,j) &
                         &* DFDQ(this % T(j), this % Q(j))
 
-!                   this % fgcnt = this % fgcnt + 1
+                   this % fgcnt = this % fgcnt + 1
 
                 end if ! non-zero
 
@@ -453,9 +453,9 @@ contains
                 ! compute the diagonal entry
                 this % J(i,j) = DRDQDOT(this % T(j), this % Q(j), this % QDOT(j), &
                      & this % h, this %A(i,j))
-
- !               this % fgcnt = this % fgcnt + 1
-
+                
+                this % fgcnt = this % fgcnt + 1
+                
              else
 
                 ! off diagonal entries
@@ -466,7 +466,7 @@ contains
                    this % J(i, j) = DRDQDOT(this % T(j), this % Q(j), this % QDOT(j), &
                         & this % h, this % A(i,i))
 
-  !                 this % fgcnt = this % fgcnt + 1
+                   this % fgcnt = this % fgcnt + 1
 
                 end if ! non-zero
 
@@ -481,3 +481,10 @@ contains
   end subroutine compute_stage_jacobian
 
 end module implicit_runge_kutta
+
+
+
+
+
+
+
