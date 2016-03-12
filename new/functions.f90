@@ -34,7 +34,6 @@ real(8) pure function R(time, q, qdot)
   real(8), intent(in)  :: time
   real(8), intent(in)  :: q, qdot
 
-  !  R = qdot - cos(time)
   R = qdot - sin(q) - cos(time)
 
 end function R
@@ -58,14 +57,18 @@ end function DFDQ
 ! DRDQDOT of the function
 !-------------------------------------------------------------------!
 
-real(8)  function DRDQDOT(time, q, qdot)
+real(8)  function DRDQDOT(time, q, qdot, h, a)
 
   implicit none
 
   real(8), intent(in)  :: time
-  real(8), intent(in)  :: q, qdot
+  real(8), intent(in)  :: q, qdot, h,a
+  real(8), parameter   :: small = 1.0d-6
+  real(8),  external   :: R
 
-  DRDQDOT = 1.0d0
+  DRDQDOT = 1.0d0 - cos(q)*h*a! (R(time, q, qdot+small) -R(time, q, qdot))/small
+
+  !  print*, DRDQDOT
 
 end function DRDQDOT
 
