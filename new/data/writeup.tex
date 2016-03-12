@@ -232,6 +232,35 @@ user implemented  routines, compared to the explicit RK scheme:
     for different step sizes and number of intermediate RK stages for the function $\dot{q}=\sin{q}+\cos{t}$.}
 \end{figure}
 
+\begin{table}[h]
+\caption{Number of function and jacobian calls made \textbf{during each time step}}
+\medskip
+\centering 
+\begin{tabular}{c | c c}
+\hline
+Method & DIRK1-Explicit & DIRK1-Descriptor  \\
+\hline
+F  & 4  & 11\\
+FG & 4  & 11\\ 
+\hline
+Method & DIRK2-Explicit & DIRK2-Descriptor  \\
+\hline
+F  & 14 & 43 \\
+FG & 18 & 59 \\ 
+\hline
+Method & DIRK3-Explicit & DIRK3-Descriptor  \\
+\hline
+F  & 32 & 105 \\
+FG & 56 & 184 \\ 
+\hline
+\end{tabular}
+\label{tab:com_cost}
+\end{table}
+This difference in the number of calls is due to the fact that the
+descriptor system takes \underline{three times} as many Newton
+iterations as the explicit formulation. The explicit formulation takes
+about 5 Newton iterations whereas the solution of the descriptor
+nonlinear stage equations take 15 iterations.
 
 \end{document}
 

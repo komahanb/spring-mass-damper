@@ -46,6 +46,9 @@ module abstract_runge_kutta
      
      ! The form of the governing equation
      logical :: descriptor_form = .true.
+
+     ! number of function and gradient calls
+     integer :: fcnt=0, fgcnt = 0
      
    contains
 
