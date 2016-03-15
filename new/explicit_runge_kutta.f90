@@ -136,9 +136,9 @@ contains
 
     class(ERK) :: this
     integer, intent(in) :: k 
-    real(8), intent(in), dimension(:) :: q
+    real(8), intent(in), dimension(:,:) :: q
     real(8) :: tmp
-    integer :: j, i 
+    integer :: j, i, m
     real(8), external :: F
     
     ! Stage derivatives are explicitly found at each iteration
@@ -152,12 +152,15 @@ contains
 
           ! stage Y (Most of the entries in A are zero, using SUM in
           ! preference to intrinsic functions)
-          this % Q(j) = q(k-1) + this % h*sum(this % A(j,:)*this % QDOT(:))
+          forall(m=1:this%nvars)
+             this % Q(j,m) = q(k-1,m) + this % h*sum(this % A(j,:)*this % QDOT(:,m))
+          end forall
 
           ! stage derivative
-          this % QDOT(j) =  F(this % T(j), this % Q(j))
+          this % QDOT(j,:) =  F(this % T(j), this % Q(j,:))
 
        end do
+
 !!$
 !!$    else
 !!$
@@ -180,3 +183,12 @@ contains
   end subroutine compute_stage_valuesERK
 
 end module explicit_runge_kutta
+
+
+
+
+
+
+
+
+
