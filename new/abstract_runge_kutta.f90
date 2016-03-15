@@ -38,11 +38,11 @@ module abstract_runge_kutta
 
      ! The stage time and its corresponding derivatives
      real(8), dimension(:)  , allocatable :: T ! the corresponding stage time
-     real(8), dimension(:)  , allocatable :: Q ! the corresponding state
-     real(8), dimension(:)  , allocatable :: QDOT ! the stage derivatives K = F(T,Q)
+     real(8), dimension(:,:)  , allocatable :: Q ! the corresponding state
+     real(8), dimension(:,:)  , allocatable :: QDOT ! the stage derivatives K = F(T,Q)
 
-     real(8), dimension(:)  , allocatable :: R ! stage residual
-     real(8), dimension(:,:), allocatable :: J ! stage jacobian
+     real(8), dimension(:,:)  , allocatable :: R ! stage residual
+     real(8), dimension(:,:,:), allocatable :: J ! stage jacobian
      
      ! The form of the governing equation
      logical :: descriptor_form = .true.
@@ -80,7 +80,7 @@ module abstract_runge_kutta
        import RK
        class(RK) :: this
        integer, intent(in) :: k 
-       real(8), intent(in), dimension(:) :: q
+       real(8), intent(in), dimension(:,:) :: q
      end subroutine compute_stage_values_interface
 
      !----------------------------------------------------------------!
@@ -295,8 +295,8 @@ contains
 
     class(RK) :: this
     integer, intent(in) :: k ! current time step
-    real(8), intent(inout), dimension(:,:) :: q ! actual states
-    real(8), intent(inout), dimension(:,:) :: qdot ! actual state    
+    real(8), intent(inout), dimension(this%num_stages,this%nvars) :: q ! actual states
+    real(8), intent(inout), dimension(this%num_stages,this%nvars) :: qdot ! actual state    
     integer :: m
     
     ! increment the time
@@ -304,7 +304,8 @@ contains
     
     ! update q for all m variables
     forall(m=1:this%nvars)
-       q(k,m) = q(k-1,m) + this % h*sum(this % B(:) * this % QDOT(:,m))
+       q(k,m) = q(k-1,m) + this % h*sum(this % B(1:this%num_stages) &
+            &* this % QDOT(1:this%num_stages,m))
     end forall
     
   end subroutine update_states
