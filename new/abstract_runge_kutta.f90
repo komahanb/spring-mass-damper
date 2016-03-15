@@ -27,7 +27,7 @@ module abstract_runge_kutta
 
      integer :: num_stages = 1  ! default number of stages
      integer :: order           ! order of accuracy
-
+     integer :: nvars = 1       ! number of states/equations
      real(8) :: h = 0.1d0       ! default step size (will reconsider when implementing adaptive step size)
      real(8) :: time            ! scalar to track integration time
      
@@ -152,18 +152,18 @@ contains
     this % C = 0.0d0
 
     !-----------------------------------------------------------------!
-    ! allocate space for the stage derivatives
-    !-----------------------------------------------------------------!
-
-    allocate(this % QDOT(this % num_stages))
-    this % QDOT = 0.0d0
-
-    !-----------------------------------------------------------------!
     ! allocate space for the stage state
     !-----------------------------------------------------------------!
 
-    allocate(this % Q(this % num_stages))
+    allocate(this % Q(this % num_stages, this % nvars))
     this % Q = 0.0d0
+
+    !-----------------------------------------------------------------!
+    ! allocate space for the stage derivatives
+    !-----------------------------------------------------------------!
+
+    allocate(this % QDOT(this % num_stages, this % nvars))
+    this % QDOT = 0.0d0
 
     !-----------------------------------------------------------------!
     ! allocate space for the stage time
@@ -176,14 +176,15 @@ contains
     ! allocate space for the stage time
     !-----------------------------------------------------------------!
 
-    allocate(this % R(this % num_stages))
+    allocate(this % R(this % num_stages, this % nvars))
     this % R = 0.0d0
 
     !-----------------------------------------------------------------!
     ! allocate space for the stage time
     !-----------------------------------------------------------------!
-
-    allocate(this % J(this % num_stages, this % num_stages))
+    
+    allocate(this % J(this % num_stages,&
+         & this % num_stages, this % nvars))
     this % J = 0.0d0
 
     !-----------------------------------------------------------------!
@@ -266,7 +267,7 @@ contains
   subroutine Integrate(this, q, qdot, N)
 
     class(RK) :: this
-    real(8), intent(inout), dimension(:) :: q, qdot
+    real(8), intent(inout), dimension(:,:) :: q, qdot !q(time, var)
     integer, intent(in) :: N 
     integer :: k
 
@@ -294,14 +295,17 @@ contains
 
     class(RK) :: this
     integer, intent(in) :: k ! current time step
-    real(8), intent(inout), dimension(:) :: q ! actual states
-    real(8), intent(inout), dimension(:) :: qdot ! actual state    
-
+    real(8), intent(inout), dimension(:,:) :: q ! actual states
+    real(8), intent(inout), dimension(:,:) :: qdot ! actual state    
+    integer :: m
+    
     ! increment the time
     this % time = this % time + this % h
     
-    ! update q (for first order ODE)
-    q(k) = q(k-1) + this % h*sum(this % B * this % QDOT)
+    ! update q for all m variables
+    forall(m=1:this%nvars)
+       q(k,m) = q(k-1,m) + this % h*sum(this % B(:) * this % QDOT(:,m))
+    end forall
     
   end subroutine update_states
 
