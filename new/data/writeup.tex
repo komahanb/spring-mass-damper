@@ -31,78 +31,6 @@ $J_{ij}$  && $i,j-$th stage jacobian entry \\
 \end{minipage}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%  EXPLICIT RUNGE KUTTA %%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\section{Governing Equations in Explicit Form}
-
-Consider a first order differential equation  of the form
-\begin{equation}
-  \pf{q}{t} = f(t, q)
-\end{equation}
-In IRK, one needs to solve a system of nonlinear stage equations at
-each time step. 
-\paragraph{Stage Equations:}
-The stage equations to be solved are as follows:
-\begin{equation}\label{stage_explicit}
-  q_{k,i} = q_{k} + h \sum_{j=1}^s a_{ij} f(t_{k,j}, q_{k,j}) \quad i = 1,\ldots,s 
-\end{equation}
-Here, $t_{k,j}$ is provided by the formula:
-\begin{equation}
-  t_{k,j} = t_k + c_j h
-\end{equation}
-\paragraph{Residual of Stage Equations:}
- The residual of the stage equations:
-\begin{equation}
-  F_i = q_{k,i} - q_{k} - h \sum_{j=1}^s a_{ij} f(t_{k,j}, q_{k,j}) \quad i = 1,\ldots,s 
-\end{equation}
-\paragraph{Jacobian of Stage Equations:}
-The jacobian of the stage equations:
-\begin{equation}
-  \begin{split}
-    J_{ii} = 1 - h a_{ii} \pd{f(t_{k,i}, q_{k,i})}{q} \quad \forall i = j \\
-    J_{ij} = - h a_{ij} \pd{f(t_{k,j}, q_{k,j})}{q} \quad \forall i \ne j
-  \end{split}
-\end{equation}
-Note that we may save a few function and derivative evaluations when
-the corresponding Butcher tableau entries $a_{ij}$ are zero. Along the
-same line of discussion, DIRK offers greater computational savings.
-
-\paragraph{Time Marching:}
-Once the stage states $q_{k,i}$ are found, they can be used to find the next
-value of the state as follows:
-\begin{equation}
-  q_{k+1} = q_{k} + \sum_{i=1}^s b_i f(t_{k,i},q_{k,i})
-\end{equation}
-
-\subsection{Two-Stage IRK Example}
-
-Consider an example of two-stage IRK. The stage residual is:
-\begin{equation}\label{eq:sr2}
-  \begin{split}
-    \mathbf{F} & = \left\{
-    \begin{array}{rr} q_{k,1} - q_{k} - h \sum_{j=1}^s a_{1j} f(t_{k,j}, q_{k,j}) \\
-      q_{k,2} - q_{k} - h \sum_{j=1}^s a_{2j} f(t_{k,j}, q_{k,j})
-    \end{array} \right\}\\
-    & = \left\{
-    \begin{array}{rr} q_{k,1} - q_{k} -  a_{11} h f(t_{k,1}, q_{k,1}) + a_{12} h f(t_{k,2}, q_{k,2})\\
-      q_{k,2} - q_{k} - a_{21} h f(t_{k,1}, q_{k,1}) + a_{22} h f(t_{k,2}, q_{k,2})
-    \end{array} \right\}
-  \end{split}
-\end{equation}
-We need to solve for $q_{k,1}$ and $q_{k,2}$, differentiating $\mathbf{F}$ we get
-the stage jacobian matrix:
-\begin{equation}\label{eq:sj2}
-  \mathbf{J} =  \begin{bmatrix}
-    1 - h a_{11} \pd{f(t_{k,1}, q_{k,1})}{q} & - h a_{12} \pd{f(t_{k,2}, q_{k,2})}{q}\\
-    - h a_{21} \pd{f(t_{k,1}, q_{k,1})}{q}   & 1 - h a_{22} \pd{f(t_{k,2}, q_{k,2})}{q}
-  \end{bmatrix}
-\end{equation}
-Eqs.~\eqref{eq:sr2} and ~\eqref{eq:sj2} are to be solved for the state
-variable values $q_{k,1}$ and $q_{k,2}$, using iterative methods such as the
-Newton's method.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%  IMPLICIT RUNGE KUTTA %%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -110,7 +38,7 @@ Newton's method.
 
 Consider first order differential equation in descriptor form
 \begin{equation}
-  \mathbf{R}(t, q, \pf{q}{t}) = 0
+  \mathbf{R}(t_k, q_k, \dot{q}_k) = 0
 \end{equation}
 
 \paragraph{Stage Equations:}
@@ -129,73 +57,107 @@ Using Eq.~\eqref{stage_implicit}, this becomes
 In this equation we need to solve for $q_{k,i}$ values. We use
 Newtons's method to solve for these stage derivatives. To aid the
 solution, we need the Jacobian of the governing equation.
-
 \begin{equation}
-  \mathbf{J} = \pd{\mathbf{R}\left(t_{k,i},{q}_{k,i},\dot{q}_{k,i}\right)}{\dot{q}}
+  \begin{split}
+    J = \pf{R}{\dot{q}} & = \pd{R}{\dot{q}} + \pd{R}{{q}}  \pd{{q}}{\dot{q}} \\
+  & =  \pd{R}{\dot{q}} + h a_{ii} \pd{R}{q}\\
+  \end{split}
 \end{equation}
+
+\beq
+\mathbf{J} = \pd{\mathbf{R}\left(t_{k,i},{q}_{k,i},\dot{q}_{k,i}\right)}{\dot{q}} + h a_{ii} \pd{\mathbf{R}\left(t_{k,i},{q}_{k,i},\dot{q}_{k,i}\right)}{{q}}
+\eeq
+  
 
 \paragraph{Time Marching:}
 
-Once the stage derivatives $\dot{q}_{j}$ are found, they can be used
+Once the stage derivatives $\dot{q}_{k,i}$ are found, they can be used
 to find the next value of the state as follows:
 \begin{equation}
-  q_{k+1} = q_{k} + \sum_{i=1}^s b_i \dot{q}_{k,i}
+  q_{k+1} = q_{k} + h \sum_{i=1}^s b_i \dot{q}_{k,i}
 \end{equation}
+
+\section{Second order system}
+
+The governing equation in descriptor form for the $k-$th time-step
+takes the form:
+\begin{equation}
+  \mathbf{R}\left(t_{k}, q_{k}, \dot{q}_{k},\ddot{q}_{k}\right) = 0
+\end{equation}
+%
+%\paragraph{Stage Equations:}
+%We write Eq.~\ref{stage_explicit} in the following form for this
+%system
+%\begin{equation}\label{stage_implicit}
+%  q_{k,i} = q_{k} + h \sum_{j=1}^s a_{ij} \dot{q}_{k,j} + \frac{h^2}{2} \sum_{j=1}^s a_{ij} \ddot{q}_{k,j} \quad i = 1,\ldots,s 
+%\end{equation}
+%
+%\begin{equation}\label{stage_implicit}
+%  q_{k,i} = q_{k} + h \dot{q}_k + \frac{h^2}{2} \sum_{j=1}^s a_{ij} \ddot{q}_{k,j} \quad i = 1,\ldots,s 
+%\end{equation}
+
+
+\paragraph{Representation 1}
+
+\begin{equation}\label{stage_implicit1}
+  q_{k,i} = q_{k} + h \sum_{j=1}^s a_{ij} \dot{q}_{k,j} + \frac{h^2}{2} \sum_{j=1}^s a_{ij} \ddot{q}_{k,j} \quad i = 1,\ldots,s 
+\end{equation}
+
+\begin{equation}\label{stage_implicit2}
+  \dot{q}_{k,i} = \dot{q}_{k} + h \sum_{j=1}^s a_{ij} \ddot{q}_{k,j} \quad i = 1,\ldots,s 
+\end{equation}
+
+
+\beq
+\mathbf{R}\left(t_{k,i}, q_{k,i}, \dot{q}_{k,i},\ddot{q}_{k,i},     \right) = 0
+\eeq
+
+
+
+\paragraph{Representation 2}
+
+\begin{equation}\label{stage_implicit1}
+  q_{k,i} = q_{k} + h \sum_{j=1}^s a_{ij} \dot{q}_{k,j} \quad i = 1,\ldots,s 
+\end{equation}
+
+\begin{equation}\label{stage_implicit2}
+  \dot{q}_{k,i} = \dot{q}_{k} + h \sum_{j=1}^s a_{ij} \ddot{q}_{k,j} \quad i = 1,\ldots,s 
+\end{equation}
+
+
+\beq
+\mathbf{R}\left(t_{k,i}, q_{k,i}, \dot{q}_{k,i},\ddot{q}_{k,i},     \right) = 0
+\eeq
+
+
+
+\end{document}
+
+\paragraph{Residual of Stage Equations:}
+
+The residual of the stage equations:
+\begin{equation}
+  F_i = q_{k,i} - q_{k} - h \sum_{j=1}^s a_{ij} \dot{q}_{k,j} \quad i = 1,\ldots,s 
+\end{equation}
+
+\paragraph{Jacobian of Stage Equations:}
+
+The jacobian of the stage equations:
+\begin{equation}
+  \begin{split}
+    J_{ii} = 1 - h a_{ii} \pd{\dot{q}(t_{k,i}, q_{k,i})}{q} \quad \forall i = j \\
+    J_{ij} = - h a_{ij} \pd{\dot{q}(t_{k,j}, q_{k,j})}{q} \quad \forall i \ne j
+  \end{split}
+\end{equation}
+
+
+
 From an implementation point of view, the only changes occur within
 user implemented  routines, compared to the explicit RK scheme:
 \begin{enumerate}
 \item \texttt{compute\_stage\_residual} and
 \item \texttt{compute\_stage\_jacobian}
 \end{enumerate}
-
-\clearpage
-
-\appendix
-\section{Compute Code}
-
-\subsection{Time Marching}
-
-\begin{verbatim}
-    march: do k = 2, N + 1
-
-       ! find the stage derivatives solving the nonlinear system
-       call this % compute_stage_values(k, q)
-        
-       ! advance in time
-       call this % update_states(k, q, qdot)
-
-    end do march
-\end{verbatim}
-
-
-\subsection{Solve the Non-linear System}
-
-\begin{verbatim}
-    newton: do n = 1, this % max_newton
-       
-       ! Get the stage residual
-       call this % compute_stage_residual(qk)
-       
-       ! Get the stage jacobian matrix
-       call this % compute_stage_jacobian()
-
-       ! Call lapack to solve the stage values system
-       dq = this % R
-       call DGESV(this % num_stages, 1, this % J, this % num_stages, &
-            & IPIV, dq, this % num_stages, INFO)
-
-       ! Check stop
-       if (norm2(this % R) .le. this % tol .or. &
-            & norm2(dq) .le. this % tol) then
-          conv = .true.
-          exit newton
-       end if
-       
-       ! update q(k,i)
-       this % Y = this % Y - dQ
-       
-    end do newton
-\end{verbatim}
 
 \section{Results}
 
@@ -262,21 +224,76 @@ iterations as the explicit formulation. The explicit formulation takes
 about 5 Newton iterations whereas the solution of the descriptor
 nonlinear stage equations take 15 iterations.
 
-\end{document}
 
-\paragraph{Residual of Stage Equations:}
 
-The residual of the stage equations:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%  EXPLICIT RUNGE KUTTA %%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Governing Equations in Explicit Form}
+
+Consider a first order differential equation  of the form
 \begin{equation}
-  F_i = q_{k,i} - q_{k} - h \sum_{j=1}^s a_{ij} \dot{q}_{k,j} \quad i = 1,\ldots,s 
+  \pf{q}{t} = f(t, q)
 \end{equation}
-
+In IRK, one needs to solve a system of nonlinear stage equations at
+each time step. 
+\paragraph{Stage Equations:}
+The stage equations to be solved are as follows:
+\begin{equation}\label{stage_explicit}
+  q_{k,i} = q_{k} + h \sum_{j=1}^s a_{ij} f(t_{k,j}, q_{k,j}) \quad i = 1,\ldots,s 
+\end{equation}
+Here, $t_{k,j}$ is provided by the formula:
+\begin{equation}
+  t_{k,j} = t_k + c_j h
+\end{equation}
+\paragraph{Residual of Stage Equations:}
+ The residual of the stage equations:
+\begin{equation}
+  F_i = q_{k,i} - q_{k} - h \sum_{j=1}^s a_{ij} f(t_{k,j}, q_{k,j}) \quad i = 1,\ldots,s 
+\end{equation}
 \paragraph{Jacobian of Stage Equations:}
-
 The jacobian of the stage equations:
 \begin{equation}
   \begin{split}
-    J_{ii} = 1 - h a_{ii} \pd{\dot{q}(t_{k,i}, q_{k,i})}{q} \quad \forall i = j \\
-    J_{ij} = - h a_{ij} \pd{\dot{q}(t_{k,j}, q_{k,j})}{q} \quad \forall i \ne j
+    J_{ii} = 1 - h a_{ii} \pd{f(t_{k,i}, q_{k,i})}{q} \quad \forall i = j \\
+    J_{ij} = - h a_{ij} \pd{f(t_{k,j}, q_{k,j})}{q} \quad \forall i \ne j
   \end{split}
 \end{equation}
+Note that we may save a few function and derivative evaluations when
+the corresponding Butcher tableau entries $a_{ij}$ are zero. Along the
+same line of discussion, DIRK offers greater computational savings.
+
+\paragraph{Time Marching:}
+Once the stage states $q_{k,i}$ are found, they can be used to find the next
+value of the state as follows:
+\begin{equation}
+  q_{k+1} = q_{k} + h \sum_{i=1}^s b_i f(t_{k,i},q_{k,i})
+\end{equation}
+
+\subsection{Two-Stage IRK Example}
+
+Consider an example of two-stage IRK. The stage residual is:
+\begin{equation}\label{eq:sr2}
+  \begin{split}
+    \mathbf{F} & = \left\{
+    \begin{array}{rr} q_{k,1} - q_{k} - h \sum_{j=1}^s a_{1j} f(t_{k,j}, q_{k,j}) \\
+      q_{k,2} - q_{k} - h \sum_{j=1}^s a_{2j} f(t_{k,j}, q_{k,j})
+    \end{array} \right\}\\
+    & = \left\{
+    \begin{array}{rr} q_{k,1} - q_{k} -  a_{11} h f(t_{k,1}, q_{k,1}) + a_{12} h f(t_{k,2}, q_{k,2})\\
+      q_{k,2} - q_{k} - a_{21} h f(t_{k,1}, q_{k,1}) + a_{22} h f(t_{k,2}, q_{k,2})
+    \end{array} \right\}
+  \end{split}
+\end{equation}
+We need to solve for $q_{k,1}$ and $q_{k,2}$, differentiating $\mathbf{F}$ we get
+the stage jacobian matrix:
+\begin{equation}\label{eq:sj2}
+  \mathbf{J} =  \begin{bmatrix}
+    1 - h a_{11} \pd{f(t_{k,1}, q_{k,1})}{q} & - h a_{12} \pd{f(t_{k,2}, q_{k,2})}{q}\\
+    - h a_{21} \pd{f(t_{k,1}, q_{k,1})}{q}   & 1 - h a_{22} \pd{f(t_{k,2}, q_{k,2})}{q}
+  \end{bmatrix}
+\end{equation}
+Eqs.~\eqref{eq:sr2} and ~\eqref{eq:sj2} are to be solved for the state
+variable values $q_{k,1}$ and $q_{k,2}$, using iterative methods such as the
+Newton's method.
