@@ -1,27 +1,19 @@
 !-------------------------------------------------------------------!
 ! Function in Explicit form qdot = f(t, q)
 !-------------------------------------------------------------------!
+subroutine F(nvars,time, q, qdot)
 
-real(8) pure function F(time, q)
-  
   implicit none
 
-  real(8), intent(in)  :: time
-  real(8), intent(in)  :: q
+  integer :: nvars
+  real(8)  :: time
+  real(8) :: q(nvars)
+  real(8) :: qdot(nvars)
 
-  !  F = exp(time)
-  !  F = cos(time)
+  qdot(1) = sin(q(1)) + cos(time)
+  qdot(2) = sin(q(2)) + cos(time)
 
-  F = sin(q) + cos(time)
-
-  ! F = tan(q) + 1.0d0 
-  ! F = -2.0d0*time*q
-  ! F = cos(q) - sin(time)
-  ! F = qdot - cos(time)
-  ! F = cos(q) - sin(time)
-  ! F = exp(time)
-
-end function F
+end subroutine F
 
 !-------------------------------------------------------------------!
 ! Function in Implicit form R(t, q, qot) = 0 
