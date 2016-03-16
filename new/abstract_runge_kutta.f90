@@ -101,10 +101,11 @@ contains
   ! Initialize the dirk datatype and construct the tableau
   !-------------------------------------------------------------------!
 
-  subroutine initialize(this, tinit, num_stages, h)
+  subroutine initialize(this, nvars, tinit, num_stages, h)
 
     class(RK) :: this
     integer, OPTIONAL, intent(in) :: num_stages
+    integer, OPTIONAL, intent(in) :: nvars
     real(8), OPTIONAL, intent(in) :: tinit
     real(8), OPTIONAL, intent(in) :: h
 
@@ -136,6 +137,16 @@ contains
        this % h = h 
     else
        print '("Using default step size h : ", E9.3)', this % h
+    end if
+
+    !-----------------------------------------------------------------!
+    ! set the user supplied number of variables
+    !-----------------------------------------------------------------!
+    
+    if (present(nvars)) then
+       this % nvars = nvars 
+    else
+       print '("Using default nvars : ", i4)', this % nvars
     end if
     
     !-----------------------------------------------------------------!
@@ -273,7 +284,7 @@ contains
 
     ! March in time
     march: do k = 2, N + 1
-
+       
        ! find the stage derivatives at the current step
        call this % compute_stage_values(k, q)
 
@@ -293,21 +304,22 @@ contains
 
   subroutine update_states(this, k, q, qdot)
 
+    implicit none
+
     class(RK) :: this
     integer, intent(in) :: k ! current time step
-    real(8), intent(inout), dimension(this%num_stages,this%nvars) :: q ! actual states
-    real(8), intent(inout), dimension(this%num_stages,this%nvars) :: qdot ! actual state    
+    real(8),  dimension(:,:) :: q, qdot ! actual states
     integer :: m
-    
-    ! increment the time
-    this % time = this % time + this % h
-    
+
     ! update q for all m variables
     forall(m=1:this%nvars)
        q(k,m) = q(k-1,m) + this % h*sum(this % B(1:this%num_stages) &
             &* this % QDOT(1:this%num_stages,m))
     end forall
     
+    ! increment the time
+    this % time = this % time + this % h
+
   end subroutine update_states
 
   !-------------------------------------------------------------------!

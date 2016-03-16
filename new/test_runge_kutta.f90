@@ -12,7 +12,7 @@ program main
 
   integer, parameter :: M = 2
   real(8), parameter :: h =  1.0d-1
-  real(8), parameter :: tinit = 0.0d0
+  real(8), parameter :: tinit = 3.0d0
   real(8), parameter :: tfinal = 5.0d0
   real(8), allocatable, dimension(:,:,:) :: q, qdot
   integer :: nargs, j, N
@@ -45,8 +45,12 @@ program main
   ! Explicit Runge Kutta
   !-------------------------------------------------------------------!
 
-  q = 0.0d0; q(:,1,:) = 1.0d0; qdot(:,1,:)=1.0d0
+  q = 0.0d0
+  qdot = 0.0d0
 
+  q(:,1,1) = 0.0d0
+  q(:,1,2) = 1.0d0
+  
   do kk = 1, 3
      
      if (kk.eq.1) open(unit=90, file='erk1.dat')

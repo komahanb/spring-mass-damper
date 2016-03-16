@@ -10,8 +10,11 @@ subroutine F(nvars,time, q, qdot)
   real(8) :: q(nvars)
   real(8) :: qdot(nvars)
 
-  qdot(1) = sin(q(1)) + cos(time)
-  qdot(2) = sin(q(2)) + cos(time)
+!  qdot(1) = sin(q(2)) + cos(time)
+!  qdot(2) = sin(time) + cos(q(1))
+
+  qdot(1) = q(2)
+  qdot(2) = -0.5d0*q(1) + 2.5d0*q(2)
 
 end subroutine F
 
