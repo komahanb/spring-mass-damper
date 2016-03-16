@@ -44,8 +44,6 @@ program main
   !-------------------------------------------------------------------!
   ! Explicit Runge Kutta
   !-------------------------------------------------------------------!
-  
-  open(unit=90, file='erk.dat')
 
   q = 0.0d0; q(:,1,:) = 0.0d0; qdot(:,1,:)=1.0d0
 
@@ -83,7 +81,7 @@ contains
     t = tinit + dble(k-1)*h
     exact = sin(t)
     ! exact = 2.0d0*exp(1.0d0-t*t) 
-
+    
   end function exact
 
 end program main
