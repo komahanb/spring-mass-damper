@@ -31,6 +31,8 @@ module implicit_runge_kutta
 
      ! Routines that are common to IRK and its subtypes
      procedure :: newton_solve
+     procedure :: update_newton_state
+     procedure :: setup_linear_system
      procedure :: compute_stage_residual
      procedure :: compute_stage_jacobian
 
@@ -287,11 +289,19 @@ contains
   subroutine newton_solve(this, qk)
     
     class(IRK) :: this
-    real(8), intent(in) :: qk
-    real(8) :: dQ(this % num_stages)
-    integer :: n, jj
-    integer :: ipiv(this %num_stages), info
+    real(8), intent(in) :: qk(:)
+    real(8), allocatable, dimension(:) :: res, dq
+    real(8), allocatable, dimension(:,:) :: jac
+    integer, allocatable, dimension(:) :: ipiv
+    integer :: n, info, size
     logical :: conv = .false.
+    
+    size = this % num_stages * this % nvars
+    
+    if (.not.allocated(ipiv)) allocate(ipiv(size))
+    if (.not.allocated(res)) allocate(res(size))
+    if (.not.allocated(dq)) allocate(dq(size))
+    if (.not.allocated(jac)) allocate(jac(size,size))
     
     newton: do n = 1, this % max_newton
 
@@ -302,27 +312,26 @@ contains
        ! Get the jacobian matrix
        call this % compute_stage_jacobian()
        this % fgcnt = this % fgcnt + 1
-       
-       ! call lapack to solve the stage values system
-       dq = this % R
-       call DGESV(this % num_stages, 1, this % J, this % num_stages, &
-            & IPIV, dq, this % num_stages, INFO)
 
-       ! check stop (change this to norm2 when implementing
-       ! multivariate case)
-       if (norm2(this % R) .le. this % tol .or. &
-            & norm2(dq) .le. this % tol) then
+       call this % setup_linear_system(res, jac)
+       if (norm2(res) .le. this % tol) then
           conv = .true.
           exit newton
        end if
-       
-       if (.not. this % descriptor_form) then
-          ! update q(k,i)
-          this % Q = this % Q - dQ
-       else
-          ! update qdot(k,i)
-          this % QDOT = this % QDOT - dQ
+
+       ! call lapack to solve the stage values system
+       dq = res
+       call DGESV(size, 1, jac, size, &
+            & IPIV, dq, size, INFO)
+
+       ! check stop (change this to norm2 when implementing
+       ! multivariate case)
+       if (norm2(dq) .le. this % tol) then
+          conv = .true.
+          exit newton
        end if
+
+       call this % update_newton_state(dq)
 
     end do newton
 
@@ -333,8 +342,116 @@ contains
     end if
 
     print*, this % time, n, int(dble(this % fcnt)/dble(n)), int(dble(this % fgcnt)/dble(n))
+    
+    if (allocated(ipiv)) deallocate(ipiv)
+    if (allocated(res)) deallocate(res)
+    if (allocated(dq)) deallocate(dq)
+    if (allocated(jac)) deallocate(jac)
 
   end subroutine newton_solve
+
+  !-------------------------------------------------------------------!
+  ! Routine that packs the matrix in a form that is used in lapack
+  !-------------------------------------------------------------------!
+
+  subroutine setup_linear_system(this, res, jac)
+
+    implicit none
+
+    class(irk) :: this
+    
+    real(8), intent(inout), dimension(:) :: res
+    real(8), intent(inout), dimension(:,:) :: jac
+    
+    integer :: size
+    integer :: i, j
+    integer :: istart, iend, cnt
+
+    size = this % nvars * this % num_stages
+    
+    cnt = 0 
+
+    !-----------------------------------------------------------------!
+    ! convert the residual into vector form
+    !-----------------------------------------------------------------!
+
+    do i = 1, this % num_stages
+             
+       cnt = cnt + 1 
+
+       istart = (cnt-1)*this % nvars + 1 
+       iend = (cnt)*this % nvars
+       
+       res (istart:iend) = this % R (i,:) 
+       
+       print*, i, istart, iend
+       
+    end do
+
+    !-----------------------------------------------------------------!
+    ! convert the jacobian into matrix form
+    ! 
+    ! We have a (nvar x nvar) block stored in each i,j location of this % J
+    !-----------------------------------------------------------------!
+    
+    do i = 1, this % num_stages
+       do j = 1, this % num_stages
+          ! jac(istart:iend, istart:iend) = this % J(i,j)
+
+          stop"setup jacobian stage equations"
+
+       end do
+    end do
+    
+  end subroutine setup_linear_system
+  
+  !-------------------------------------------------------------------!
+  ! After the solution of stage equations, we update the states using
+  ! this call
+  ! -------------------------------------------------------------------!
+  
+  subroutine update_newton_state(this, sol)
+    
+    implicit none
+    
+    class(irk) :: this
+    real(8) :: sol(:)
+    integer :: i
+    integer :: istart, iend, cnt
+
+    if (.not. this % descriptor_form) then
+
+       ! update q(k,i)       
+       cnt = 0
+       do i = 1, this % num_stages
+
+          cnt = cnt + 1 
+          
+          istart = (cnt-1)*this % nvars + 1 
+          iend = (cnt)*this % nvars
+          
+          this % Q(i,:) = this % Q(i,:) - sol(istart:iend)
+
+       end do
+
+    else
+       
+       ! update qdot(k,i)
+       cnt = 0
+       do i = 1, this % num_stages
+         
+          cnt = cnt + 1 
+          
+          istart = (cnt-1)*this % nvars + 1 
+          iend = (cnt)*this % nvars
+          
+          this % QDOT(i,:) = this % QDOT(i,:) - sol(istart:iend)
+          
+       end do
+
+    end if
+
+  end subroutine update_newton_state
   
   !-------------------------------------------------------------------!
   ! Computes the stage residual for the set stage state Y (comes from
@@ -346,22 +463,25 @@ contains
   !-------------------------------------------------------------------!
   
   subroutine compute_stage_residual(this, qk)
-
+    
     class(IRK) :: this
-    real(8) :: qk, tmp
-    integer :: i, j
-    real(8), external :: F, R
-
+    real(8) :: qk(:)
+    integer :: i
+    external :: F, R
+    
     if (.not. this % descriptor_form) then
 
        do i = 1, this % num_stages
           
-          this % QDOT(i) = F(this % T(i), this % Q(i))
+          !this % QDOT(i,:) = F(this % T(i), this % Q(i,:))
           
+          call F(this % nvars, this % T(i), this % Q(i,:),this % QDOT(i,:))
+
           !          this % fcnt = this % fcnt + 1
           
           ! compute the stage residuals
-          this % R(i) = this % Q(i) - qk - this % h * sum(this % A(i,:)*this % QDOT(:))
+          !this % R(i) = this % Q(i) - qk - this % h * sum(this % A(i,:)*this % QDOT(:))
+          this % R(i,:) = this % Q(i,:) - qk - this % h * sum(this % A(i,:)*this % QDOT(i,:))
           
        end do
 
@@ -370,12 +490,12 @@ contains
        do i = 1, this % num_stages
           
           ! compute the stage states for the guessed QDOT
-          this % Q(i) = qk + this % h*sum(this % A(i,:)*this % QDOT)
+          this % Q(i,:) = qk + this % h*sum(this % A(i,:)*this % QDOT(i,:))
           
           ! compute the stage residuals
-          this % R(i) = R(this % T(i), this % Q(i), this % QDOT(i))
-
-!          this % fcnt = this % fcnt + 1
+!          this % R(i) = R(this % T(i), this % Q(i), this % QDOT(i))
+          call R(this % nvars, this % T(i), this % Q(i,:), this % QDOT(i,:), this % R(i,:))
+          !          this % fcnt = this % fcnt + 1
           
        end do
        
@@ -392,7 +512,7 @@ contains
     
     class(IRK) :: this
     integer :: i, j, loop
-    real(8), external :: DFDQ, DRDQDOT
+    external :: DFDQ, DRDQDOT
     
     if (.not. this % descriptor_form) then
 
@@ -410,11 +530,17 @@ contains
              if (i .eq. j) then
 
                 ! compute the diagonal entry
-                this % J(i,j) = 1.0d0 - this % h * this % A(i,j) &
-                     &* DFDQ(this % T(j), this % Q(j))
-
+!                this % J(i,j) = 1.0d0 - this % h * this % A(i,j) &
+!                     &* DFDQ(this % T(j), this % Q(j))
+                
+                call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
+                     & this % h, this %A(i,j), this % J(i,j,:,:))
+                
+                !this % J(i,j,:,:) = 1.0d0 - this % h * this % A(i,j) &
+                !     &* this % J(i,j,:,:)
+                
                 this % fgcnt = this % fgcnt + 1
-
+                
              else
 
                 ! off diagonal entries
@@ -422,8 +548,14 @@ contains
                 ! compute only when the coeff is nonzero
                 if (this % A(i,j) .ne. 0.0d0) then
 
-                   this % J(i,j) = - this % h * this % A(i,j) &
-                        &* DFDQ(this % T(j), this % Q(j))
+!                   this % J(i,j) = - this % h * this % A(i,j) &
+!                        &* DFDQ(this % T(j), this % Q(j))
+
+                   call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
+                        & this % h, this %A(i,j), this % J(i,j,:,:))
+
+                   !this % J(i,j,:,:) = 1.0d0 - this % h * this % A(i,j) &
+                   !     &* this % J(i,j,:,:)
 
                    this % fgcnt = this % fgcnt + 1
 
@@ -451,8 +583,11 @@ contains
              if (i .eq. j) then
 
                 ! compute the diagonal entry
-                this % J(i,j) = DRDQDOT(this % T(j), this % Q(j), this % QDOT(j), &
-                     & this % h, this %A(i,j))
+                !this % J(i,j) = DRDQDOT(this % T(j), this % Q(j), this % QDOT(j), &
+                !     & this % h, this %A(i,j))
+
+                call DRDQDOT(this % nvars, this % T(j), this % Q(j,:), this % QDOT(j,:), &
+                     & this % h, this %A(i,j), this % J(i,j,:,:))
                 
                 this % fgcnt = this % fgcnt + 1
                 
@@ -463,8 +598,11 @@ contains
                 ! compute only when the coeff is nonzero
                 if (this % A(i,j) .ne. 0.0d0) then
 
-                   this % J(i, j) = DRDQDOT(this % T(j), this % Q(j), this % QDOT(j), &
-                        & this % h, this % A(i,i))
+                call DRDQDOT(this % nvars, this % T(j), this % Q(j,:), this % QDOT(j,:), &
+                     & this % h, this %A(i,j), this % J(i,j,:,:))
+
+!                   this % J(i, j) = DRDQDOT(this % T(j), this % Q(j), this % QDOT(j), &
+!                        & this % h, this % A(i,i))
 
                    this % fgcnt = this % fgcnt + 1
 
