@@ -365,7 +365,7 @@ contains
     
     integer :: size
     integer :: i, j
-    integer :: istart, iend, cnt
+    integer :: istart, iend, cnt, istart2, iend2, cnt2
 
     size = this % nvars * this % num_stages
     
@@ -394,13 +394,24 @@ contains
     ! We have a (nvar x nvar) block stored in each i,j location of this % J
     !-----------------------------------------------------------------!
     
+    cnt = 0    
     do i = 1, this % num_stages
-       do j = 1, this % num_stages
-          ! jac(istart:iend, istart:iend) = this % J(i,j)
 
-          stop"setup jacobian stage equations"
+       cnt = cnt + 1 
+       istart = (cnt-1)*this % nvars + 1 
+       iend = (cnt)*this % nvars
+
+       cnt2 = 0
+       do j = 1, this % num_stages
+
+          cnt2 = cnt2 + 1
+          istart2 = (cnt2-1)*this % nvars + 1 
+          iend2 = (cnt2)*this % nvars
+
+          jac(istart:iend,istart2:iend2) = this % J(i,j,:,:)
 
        end do
+
     end do
     
   end subroutine setup_linear_system
