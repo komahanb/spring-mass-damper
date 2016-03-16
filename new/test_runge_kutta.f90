@@ -10,7 +10,7 @@ program main
 
   integer :: i, kk
 
-  integer, parameter :: M = 1
+  integer, parameter :: M = 2
   real(8), parameter :: h =  1.0d-1
   real(8), parameter :: tinit = 0.0d0
   real(8), parameter :: tfinal = 5.0d0
@@ -36,7 +36,7 @@ program main
   ! find the number of steps needed for time marching
   !-------------------------------------------------------------------!
 
-  N = (tfinal - tinit)/h
+  N = int((tfinal - tinit)/h)
 
   allocate(q(4, N+1,M))
   allocate(qdot(4, N+1,M))
@@ -45,7 +45,7 @@ program main
   ! Explicit Runge Kutta
   !-------------------------------------------------------------------!
 
-  q = 0.0d0; q(:,1,:) = 0.0d0; qdot(:,1,:)=1.0d0
+  q = 0.0d0; q(:,1,:) = 1.0d0; qdot(:,1,:)=1.0d0
 
   do kk = 1, 3
      
@@ -53,11 +53,10 @@ program main
      if (kk.eq.2) open(unit=90, file='erk2.dat')
      if (kk.eq.3) open(unit=90, file='erk3.dat')
      
-     ! Test for each RK stage
-     
+     ! Test for each RK 
      ERKOBJ % descriptor_form = descriptor
 
-     call ERKOBJ  % initialize(h=h,tinit=tinit,num_stages=kk)
+     call ERKOBJ  % initialize(nvars=M,h=h,tinit=tinit,num_stages=kk)
      call ERKOBJ  % integrate(q(kk,:,:), qdot(kk,:,:), N)
      call ERKOBJ  % finalize()
      
@@ -76,7 +75,7 @@ contains
     
     integer, intent(in) ::  k
     real(8), intent(in) ::  h, tinit
-    real(8) :: t, c1
+    real(8) :: t
     
     t = tinit + dble(k-1)*h
     exact = sin(t)

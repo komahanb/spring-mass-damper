@@ -137,9 +137,8 @@ contains
     class(ERK) :: this
     integer, intent(in) :: k 
     real(8), intent(in), dimension(:,:) :: q
-    real(8) :: tmp
-    integer :: j, i, m
-    real(8), external :: F
+    integer :: j, m
+    external :: F
     
     ! Stage derivatives are explicitly found at each iteration
     
@@ -152,13 +151,16 @@ contains
 
           ! stage Y (Most of the entries in A are zero, using SUM in
           ! preference to intrinsic functions)
-          forall(m=1:this%nvars)
-             this % Q(j,m) = q(k-1,m) + this % h*sum(this % A(j,:)*this % QDOT(:,m))
+          forall(m = 1 : this % nvars)
+             this % Q(j,m) = q(k-1,m) &
+                  & + this % h*sum(this % A(j,:)&
+                  & *this % QDOT(:,m))
           end forall
-
+          
           ! stage derivative
-          this % QDOT(j,:) =  F(this % T(j), this % Q(j,:))
-
+          call F(this%nvars, this % T(j), this % Q(j,1:this%nvars), &
+               & this % QDOT(j,1:this%nvars))
+          
        end do
 
 !!$
