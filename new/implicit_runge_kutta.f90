@@ -249,7 +249,7 @@ contains
 
     class(IRK) :: this
     integer, intent(in) :: k 
-    real(8), intent(in), dimension(:) :: q
+    real(8), intent(in), dimension(:,:) :: q
     integer :: j
 
     ! Find the stage times
@@ -259,15 +259,15 @@ contains
     
     ! Guess the solution for stage states
     if (.not. this % descriptor_form) then
-       this % Q(:) = 1.0d0
+       this % Q = 1.0d0
     else 
-       this % QDOT(:) = 1.0d0 
+       this % QDOT = 1.0d0 
     end if
     
     ! solve the non linear stage equations using Newton's method for
     ! the actual stage states 
 
-    call this % newton_solve(q(k-1))
+    call this % newton_solve(q(k-1,:))
 
     ! at this point Q, QDOT, T are finalized--just like ERK
     
