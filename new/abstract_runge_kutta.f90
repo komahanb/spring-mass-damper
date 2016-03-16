@@ -42,7 +42,7 @@ module abstract_runge_kutta
      real(8), dimension(:,:)  , allocatable :: QDOT ! the stage derivatives K = F(T,Q)
 
      real(8), dimension(:,:)  , allocatable :: R ! stage residual
-     real(8), dimension(:,:,:), allocatable :: J ! stage jacobian
+     real(8), dimension(:,:,:,:), allocatable :: J ! stage jacobian
      
      ! The form of the governing equation
      logical :: descriptor_form = .true.
@@ -195,7 +195,7 @@ contains
     !-----------------------------------------------------------------!
     
     allocate(this % J(this % num_stages,&
-         & this % num_stages, this % nvars))
+         & this % num_stages, this % nvars, this % nvars))
     this % J = 0.0d0
 
     !-----------------------------------------------------------------!
