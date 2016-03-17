@@ -304,7 +304,7 @@ contains
     if (.not.allocated(jac)) allocate(jac(size,size))
     
     newton: do n = 1, this % max_newton
-
+       
        ! Get the residual of the function
        call this % compute_stage_residual(qk)
        this % fcnt = this % fcnt + 1
@@ -313,7 +313,10 @@ contains
        call this % compute_stage_jacobian()
        this % fgcnt = this % fgcnt + 1
 
+       ! setup linear system in lapack format
        call this % setup_linear_system(res, jac)
+
+       ! check stopping
        if (norm2(res) .le. this % tol) then
           conv = .true.
           exit newton
@@ -324,24 +327,25 @@ contains
        call DGESV(size, 1, jac, size, &
             & IPIV, dq, size, INFO)
 
-       ! check stop (change this to norm2 when implementing
-       ! multivariate case)
+       ! check stopping
        if (norm2(dq) .le. this % tol) then
           conv = .true.
           exit newton
        end if
 
+       ! update the solution
        call this % update_newton_state(dq)
-
+       
     end do newton
 
+    ! print warning message if not converged
     if (.not. conv) then
        print '("Newton solve failed : iters = ", i3," |R| = ",E10.3," &
             &|dq| = ",E10.3)',&
             & n, norm2(this % R), norm2(dq)
     end if
 
-    print*, this % time, n, int(dble(this % fcnt)/dble(n)), int(dble(this % fgcnt)/dble(n))
+    ! print*, this % time, n, int(dble(this % fcnt)/dble(n)), int(dble(this % fgcnt)/dble(n))
     
     if (allocated(ipiv)) deallocate(ipiv)
     if (allocated(res)) deallocate(res)
@@ -433,6 +437,7 @@ contains
     if (.not. this % descriptor_form) then
 
        ! update q(k,i)       
+
        cnt = 0
        do i = 1, this % num_stages
 
@@ -448,9 +453,10 @@ contains
     else
        
        ! update qdot(k,i)
+
        cnt = 0
        do i = 1, this % num_stages
-         
+          
           cnt = cnt + 1 
           
           istart = (cnt-1)*this % nvars + 1 
@@ -484,14 +490,10 @@ contains
 
        do i = 1, this % num_stages
           
-          !this % QDOT(i,:) = F(this % T(i), this % Q(i,:))
-          
+          ! compute qdot
           call F(this % nvars, this % T(i), this % Q(i,:),this % QDOT(i,:))
-
-          !          this % fcnt = this % fcnt + 1
           
           ! compute the stage residuals
-          !this % R(i) = this % Q(i) - qk - this % h * sum(this % A(i,:)*this % QDOT(:))
           this % R(i,:) = this % Q(i,:) - qk - this % h * sum(this % A(i,:)*this % QDOT(i,:))
           
        end do
@@ -504,9 +506,7 @@ contains
           this % Q(i,:) = qk + this % h*sum(this % A(i,:)*this % QDOT(i,:))
           
           ! compute the stage residuals
-!          this % R(i) = R(this % T(i), this % Q(i), this % QDOT(i))
           call R(this % nvars, this % T(i), this % Q(i,:), this % QDOT(i,:), this % R(i,:))
-          !          this % fcnt = this % fcnt + 1
           
        end do
        
@@ -547,10 +547,8 @@ contains
                 call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
                      & this % h, this %A(i,j), this % J(i,j,:,:))
                 
-                !this % J(i,j,:,:) = 1.0d0 - this % h * this % A(i,j) &
+                ! this % J(i,j,:,:) = 1.0d0 - this % h * this % A(i,j) &
                 !     &* this % J(i,j,:,:)
-                
-                this % fgcnt = this % fgcnt + 1
                 
              else
 
@@ -568,7 +566,6 @@ contains
                    !this % J(i,j,:,:) = 1.0d0 - this % h * this % A(i,j) &
                    !     &* this % J(i,j,:,:)
 
-                   this % fgcnt = this % fgcnt + 1
 
                 end if ! non-zero
 
@@ -594,13 +591,11 @@ contains
              if (i .eq. j) then
 
                 ! compute the diagonal entry
-                !this % J(i,j) = DRDQDOT(this % T(j), this % Q(j), this % QDOT(j), &
+                ! this % J(i,j) = DRDQDOT(this % T(j), this % Q(j), this % QDOT(j), &
                 !     & this % h, this %A(i,j))
 
                 call DRDQDOT(this % nvars, this % T(j), this % Q(j,:), this % QDOT(j,:), &
                      & this % h, this %A(i,j), this % J(i,j,:,:))
-                
-                this % fgcnt = this % fgcnt + 1
                 
              else
 
@@ -610,12 +605,10 @@ contains
                 if (this % A(i,j) .ne. 0.0d0) then
 
                 call DRDQDOT(this % nvars, this % T(j), this % Q(j,:), this % QDOT(j,:), &
-                     & this % h, this %A(i,j), this % J(i,j,:,:))
+                     & this % h, this %A(i,i), this % J(i,j,:,:))
 
 !                   this % J(i, j) = DRDQDOT(this % T(j), this % Q(j), this % QDOT(j), &
 !                        & this % h, this % A(i,i))
-
-                   this % fgcnt = this % fgcnt + 1
 
                 end if ! non-zero
 
