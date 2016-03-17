@@ -316,16 +316,6 @@ contains
        ! setup linear system in lapack format
        call this % setup_linear_system(res, jac)
 
-!!$       print*, "eqn1:", this % Q(:,1)
-!!$       print*, "eqn2:", this % Q(:,2)
-!!$             
-!!$       print*, "", this % q
-!!$
-!!$       print *, res
-!!$       print *, jac
-!!$
-!!$       print*, size
-
        ! check stopping
        if (norm2(res) .le. this % tol) then
           conv = .true.
@@ -352,7 +342,7 @@ contains
        print '("Newton solve failed : time = ", E10.3, " iters = ", i3,&
             & " |R| = ",E10.3," |dq| = ",E10.3)',&
             & this % time, n, norm2(res), norm2(dq)
-       stop
+       !stop
     end if
     
     if (allocated(ipiv)) deallocate(ipiv)
@@ -535,7 +525,8 @@ contains
   subroutine compute_stage_jacobian(this)
     
     class(IRK) :: this
-    integer :: i, j, loop
+    integer :: i, j, loop, kk, jj
+    real(8) :: scal
     external :: DFDQ, DRDQDOT
     
     if (.not. this % descriptor_form) then
@@ -552,11 +543,7 @@ contains
           do j = 1, loop
 
              if (i .eq. j) then
-
-                ! compute the diagonal entry
-!                this % J(i,j) = 1.0d0 - this % h * this % A(i,j) &
-!                     &* DFDQ(this % T(j), this % Q(j))
-                
+         
                 call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
                      & this % J(i,j,:,:))
                 
@@ -569,19 +556,24 @@ contains
 
                 ! compute only when the coeff is nonzero
                 if (this % A(i,j) .ne. 0.0d0) then
-
-!                   this % J(i,j) = - this % h * this % A(i,j) &
-!                        &* DFDQ(this % T(j), this % Q(j))
-
+                   
                    call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
                         & this % J(i,j,:,:))
-
+                   
                    this % J(i,j,:,:) = - this % h * this % A(i,j) &
                         &* this % J(i,j,:,:)
 
                 end if ! non-zero
 
              end if  ! diagonal or not
+             
+             ! make this a diagonally dominant matrix
+             scal = norm2(this % J(i,j,:,:))
+             do kk = 1, this % nvars
+                do jj = 1, kk
+                   if (jj.eq.kk) this % J(i,j,kk,jj) = scal + this % J(i,j,kk,jj)
+                end do
+             end do
 
           end do
 
@@ -603,8 +595,6 @@ contains
              if (i .eq. j) then
 
                 ! compute the diagonal entry
-                ! this % J(i,j) = DRDQDOT(this % T(j), this % Q(j), this % QDOT(j), &
-                !     & this % h, this %A(i,j))
 
                 call DRDQDOT(this % nvars, this % T(j), &
                      & this % Q(j,:), this % QDOT(j,:), &
@@ -624,17 +614,17 @@ contains
                    call DRDQDOT(this % nvars, this % T(j), &
                         & this % Q(j,:), this % QDOT(j,:), &
                         & this % J(i,j,:,:))
-
+                   
                    ! multiply with coeffs
                    this % J(i,j,:,:) = this % h * this % A(i,j) &
                         &* this % J(i,j,:,:)
-
+                   
                 end if ! non-zero
-
+                
              end if  ! diagonal or not
              
           end do
-
+          
        end do
 
     end if
@@ -642,15 +632,3 @@ contains
   end subroutine compute_stage_jacobian
 
 end module implicit_runge_kutta
-
-
-
-
-
-
-
-
-
-
-
-
