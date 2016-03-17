@@ -1,1 +1,1 @@
-echo "set title '# stages = $1, h = $2'; set xlabel 'Time'; set ylabel 'q'; set term eps; set output 'dae_descriptor_explicit_stage$1_h$2.eps'; plot 'dirk$1_desc.dat' u 1:2 w lp title 'Descriptor', 'dirk$1.dat' u 1:2 w lp title 'Explicit'" | gnuplot
+echo "set xlabel 'Time'; set ylabel 'q'; set term png; set output 'stage$1.png'; plot 'erk$1.dat' u 1:2 w lp, 'irk$1.dat' u 1:2 w lp, 'dirk$1.dat' u 1:2 w lp" | gnuplot

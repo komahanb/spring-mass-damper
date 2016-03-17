@@ -11,9 +11,9 @@ program main
 
   integer :: i, kk
 
-  integer, parameter :: M = 1
-  real(8), parameter :: h =  0.25d0
-  real(8), parameter :: tinit = 0.0d0
+  integer, parameter :: M = 2
+  real(8), parameter :: h =  0.1d-1
+  real(8), parameter :: tinit = 3.0d0
   real(8), parameter :: tfinal = 5.0d0
 
   real(8), allocatable, dimension(:,:,:) :: q, qdot
@@ -56,7 +56,7 @@ program main
   qdot = 0.0d0
 
   q(:,1,1) = 0.0d0
-!  q(:,1,2) = 1.0d0
+  q(:,1,2) = 1.0d0
   
   do kk = 1, 3
      
@@ -88,7 +88,7 @@ program main
   qdot = 0.0d0
   
   q(:,1,1) = 0.0d0
- ! q(:,1,2) = 1.0d0
+  q(:,1,2) = 1.0d0
   
   do kk = 1, 3
      
@@ -120,7 +120,7 @@ program main
   qdot = 0.0d0
   
   q(:,1,1) = 0.0d0
-  !q(:,1,2) = 1.0d0
+  q(:,1,2) = 1.0d0
   
   do kk = 1, 3
      
