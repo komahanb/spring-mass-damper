@@ -323,9 +323,8 @@ contains
        end if
 
        ! call lapack to solve the stage values system
-       dq = res
-       call DGESV(size, 1, jac, size, &
-            & IPIV, dq, size, INFO)
+       dq = -res
+       call DGESV(size, 1, jac, size, IPIV, dq, size, INFO)
 
        ! check stopping
        if (norm2(dq) .le. this % tol) then
@@ -342,7 +341,8 @@ contains
     if (.not. conv) then
        print '("Newton solve failed : iters = ", i3," |R| = ",E10.3," &
             &|dq| = ",E10.3)',&
-            & n, norm2(this % R), norm2(dq)
+            & n, norm2(res), norm2(dq)
+       stop
     end if
 
     ! print*, this % time, n, int(dble(this % fcnt)/dble(n)), int(dble(this % fgcnt)/dble(n))
@@ -387,8 +387,6 @@ contains
        iend = (cnt)*this % nvars
        
        res (istart:iend) = this % R (i,:) 
-       
-       print*, i, istart, iend
        
     end do
 
@@ -446,7 +444,7 @@ contains
           istart = (cnt-1)*this % nvars + 1 
           iend = (cnt)*this % nvars
           
-          this % Q(i,:) = this % Q(i,:) - sol(istart:iend)
+          this % Q(i,:) = this % Q(i,:) + sol(istart:iend)
 
        end do
 
@@ -462,7 +460,7 @@ contains
           istart = (cnt-1)*this % nvars + 1 
           iend = (cnt)*this % nvars
           
-          this % QDOT(i,:) = this % QDOT(i,:) - sol(istart:iend)
+          this % QDOT(i,:) = this % QDOT(i,:) + sol(istart:iend)
           
        end do
 
@@ -483,7 +481,7 @@ contains
     
     class(IRK) :: this
     real(8) :: qk(:)
-    integer :: i
+    integer :: i, m
     external :: F, R
     
     if (.not. this % descriptor_form) then
@@ -494,14 +492,20 @@ contains
           call F(this % nvars, this % T(i), this % Q(i,:),this % QDOT(i,:))
           
           ! compute the stage residuals
-          this % R(i,:) = this % Q(i,:) - qk - this % h * sum(this % A(i,:)*this % QDOT(i,:))
-          
+          forall(m = 1 : this % nvars)
+             this % R(i,m) = this % Q(i,m) - qk(m) - this % h * sum(this % A(i,:)*this % QDOT(:,m))
+          end forall
+
+          ! print *, this % num_stages, this % R(i,:)
+
        end do
 
     else
        
        do i = 1, this % num_stages
           
+
+          stop"need fixed"
           ! compute the stage states for the guessed QDOT
           this % Q(i,:) = qk + this % h*sum(this % A(i,:)*this % QDOT(i,:))
           
@@ -547,8 +551,8 @@ contains
                 call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
                      & this % h, this %A(i,j), this % J(i,j,:,:))
                 
-                ! this % J(i,j,:,:) = 1.0d0 - this % h * this % A(i,j) &
-                !     &* this % J(i,j,:,:)
+                this % J(i,j,:,:) = 1.0d0 - this % h * this % A(i,j) &
+                     &* this % J(i,j,:,:)
                 
              else
 
@@ -563,8 +567,8 @@ contains
                    call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
                         & this % h, this %A(i,j), this % J(i,j,:,:))
 
-                   !this % J(i,j,:,:) = 1.0d0 - this % h * this % A(i,j) &
-                   !     &* this % J(i,j,:,:)
+                   this % J(i,j,:,:) = - this % h * this % A(i,j) &
+                        &* this % J(i,j,:,:)
 
 
                 end if ! non-zero
@@ -576,6 +580,8 @@ contains
        end do
        
     else
+
+       stop"fix jacobian"
 
        do i = 1, this % num_stages
 
@@ -623,6 +629,11 @@ contains
   end subroutine compute_stage_jacobian
 
 end module implicit_runge_kutta
+
+
+
+
+
 
 
 
