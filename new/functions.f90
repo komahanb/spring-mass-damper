@@ -28,12 +28,12 @@ end subroutine F
 ! DFDQ of the function
 !-------------------------------------------------------------------!
 
-subroutine DFDQ(nvars, time, q,  h, a, J)
+subroutine DFDQ(nvars, time, q, J)
 
   implicit none
 
   integer, intent(in) :: nvars  
-  real(8), intent(in) :: time, h, a
+  real(8), intent(in) :: time
   real(8), intent(in) :: q(nvars)
   real(8), intent(inout) :: J(nvars, nvars)
   

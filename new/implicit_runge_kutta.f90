@@ -553,7 +553,7 @@ contains
 !                     &* DFDQ(this % T(j), this % Q(j))
                 
                 call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
-                     & this % h, this %A(i,j), this % J(i,j,:,:))
+                     & this % J(i,j,:,:))
                 
                 this % J(i,j,:,:) = 1.0d0 - this % h * this % A(i,j) &
                      &* this % J(i,j,:,:)
@@ -569,7 +569,7 @@ contains
 !                        &* DFDQ(this % T(j), this % Q(j))
 
                    call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
-                        & this % h, this %A(i,j), this % J(i,j,:,:))
+                        & this % J(i,j,:,:))
 
                    this % J(i,j,:,:) = - this % h * this % A(i,j) &
                         &* this % J(i,j,:,:)
