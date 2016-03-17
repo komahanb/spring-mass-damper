@@ -339,9 +339,9 @@ contains
 
     ! print warning message if not converged
     if (.not. conv) then
-       print '("Newton solve failed : iters = ", i3," |R| = ",E10.3," &
-            &|dq| = ",E10.3)',&
-            & n, norm2(res), norm2(dq)
+       print '("Newton solve failed : time = ", E10.3, " iters = ", i3,&
+            & " |R| = ",E10.3," |dq| = ",E10.3)',&
+            & this % time, n, norm2(res), norm2(dq)
        stop
     end if
     
