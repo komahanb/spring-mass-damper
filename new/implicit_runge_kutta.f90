@@ -344,8 +344,6 @@ contains
             & n, norm2(res), norm2(dq)
        stop
     end if
-
-    ! print*, this % time, n, int(dble(this % fcnt)/dble(n)), int(dble(this % fgcnt)/dble(n))
     
     if (allocated(ipiv)) deallocate(ipiv)
     if (allocated(res)) deallocate(res)
@@ -493,7 +491,8 @@ contains
           
           ! compute the stage residuals
           forall(m = 1 : this % nvars)
-             this % R(i,m) = this % Q(i,m) - qk(m) - this % h * sum(this % A(i,:)*this % QDOT(:,m))
+             this % R(i,m) = this % Q(i,m) - qk(m) &
+                  & - this % h * sum(this % A(i,:)*this % QDOT(:,m))
           end forall
 
           ! print *, this % num_stages, this % R(i,:)
@@ -506,13 +505,15 @@ contains
           
           ! compute the stage states for the guessed QDOT
           forall(m = 1 : this % nvars)
-             this % Q(i,m) = qk(m) + this % h*sum(this % A(i,:)*this % QDOT(:, m))
+             this % Q(i,m) = qk(m) &
+                  & + this % h*sum(this % A(i,:)*this % QDOT(:, m))
           end forall
 
           ! compute the stage residuals
-          call R(this % nvars, this % T(i), this % Q(i,:), this % QDOT(i,:), this % R(i,:))
+          call R(this % nvars, this % T(i), this % Q(i,:), &
+               & this % QDOT(i,:), this % R(i,:))
 
-          !print *, this % num_stages, this % R(i,:)
+          ! print *, this % num_stages, this % R(i,:)
 
        end do
       
@@ -600,9 +601,14 @@ contains
                 ! this % J(i,j) = DRDQDOT(this % T(j), this % Q(j), this % QDOT(j), &
                 !     & this % h, this %A(i,j))
 
-                call DRDQDOT(this % nvars, this % T(j), this % Q(j,:), this % QDOT(j,:), &
-                     & this % h, this %A(i,j), this % J(i,j,:,:))
+                call DRDQDOT(this % nvars, this % T(j), &
+                     & this % Q(j,:), this % QDOT(j,:), &
+                     & this % J(i,j,:,:))
                 
+                ! multiply with coeffs
+                this % J(i,j,:,:) = 1.0d0 + this % h * this % A(i,i) &
+                     &* this % J(i,j,:,:)
+
              else
 
                 ! off diagonal entries
@@ -610,11 +616,13 @@ contains
                 ! compute only when the coeff is nonzero
                 if (this % A(i,j) .ne. 0.0d0) then
 
-                call DRDQDOT(this % nvars, this % T(j), this % Q(j,:), this % QDOT(j,:), &
-                     & this % h, this %A(i,i), this % J(i,j,:,:))
+                   call DRDQDOT(this % nvars, this % T(j), &
+                        & this % Q(j,:), this % QDOT(j,:), &
+                        & this % J(i,j,:,:))
 
-!                   this % J(i, j) = DRDQDOT(this % T(j), this % Q(j), this % QDOT(j), &
-!                        & this % h, this % A(i,i))
+                   ! multiply with coeffs
+                   this % J(i,j,:,:) = this % h * this % A(i,j) &
+                        &* this % J(i,j,:,:)
 
                 end if ! non-zero
 

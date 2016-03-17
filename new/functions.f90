@@ -98,16 +98,16 @@ end subroutine R
 ! DRDQDOT of the function
 !---------------------------------------------------------------------!
 
-subroutine DRDQDOT(nvars, time, q, qdot, h, a, J)
+subroutine DRDQDOT(nvars, time, q, qdot, J)
 
   implicit none
 
   integer, intent(in) :: nvars  
   real(8), intent(in) :: time
-  real(8), intent(in) :: q(nvars), qdot(nvars), h,a
+  real(8), intent(in) :: q(nvars), qdot(nvars)
   real(8), intent(inout) :: J(nvars,nvars)  
 
-  J(1,1) = 1.0d0 - cos(q(1))*h*a
+  J(1,1) = - cos(q(1))
 
 end subroutine DRDQDOT
 
