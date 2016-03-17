@@ -504,16 +504,19 @@ contains
        
        do i = 1, this % num_stages
           
-
-          stop"need fixed"
           ! compute the stage states for the guessed QDOT
-          this % Q(i,:) = qk + this % h*sum(this % A(i,:)*this % QDOT(i,:))
-          
+          forall(m = 1 : this % nvars)
+             this % Q(i,m) = qk(m) + this % h*sum(this % A(i,:)*this % QDOT(:, m))
+          end forall
+
           ! compute the stage residuals
           call R(this % nvars, this % T(i), this % Q(i,:), this % QDOT(i,:), this % R(i,:))
-          
+
+          !print *, this % num_stages, this % R(i,:)
+
        end do
-       
+      
+
     end if
 
   end subroutine compute_stage_residual
@@ -570,7 +573,6 @@ contains
                    this % J(i,j,:,:) = - this % h * this % A(i,j) &
                         &* this % J(i,j,:,:)
 
-
                 end if ! non-zero
 
              end if  ! diagonal or not
@@ -580,8 +582,6 @@ contains
        end do
        
     else
-
-       stop"fix jacobian"
 
        do i = 1, this % num_stages
 
@@ -619,7 +619,7 @@ contains
                 end if ! non-zero
 
              end if  ! diagonal or not
-
+             
           end do
 
        end do

@@ -79,8 +79,6 @@ program main
   close(90)
 
   end do
-  
-!  stop "end of erk"
 
   !-------------------------------------------------------------------!
   ! Implicit Runge Kutta
@@ -90,7 +88,7 @@ program main
   qdot = 0.0d0
   
   q(:,1,1) = 0.0d0
-  !  q(:,1,2) = 1.0d0
+ ! q(:,1,2) = 1.0d0
   
   do kk = 1, 3
      
@@ -114,8 +112,6 @@ program main
 
   end do
 
-
-!stop"endofirk"
   !-------------------------------------------------------------------!
   ! Diagonally Implicit Runge Kutta
   !-------------------------------------------------------------------!
@@ -124,8 +120,7 @@ program main
   qdot = 0.0d0
   
   q(:,1,1) = 0.0d0
- 
-! q(:,1,2) = 1.0d0
+  !q(:,1,2) = 1.0d0
   
   do kk = 1, 3
      
@@ -164,3 +159,13 @@ contains
   end function exact
 
 end program main
+
+
+
+
+
+
+
+
+
+
