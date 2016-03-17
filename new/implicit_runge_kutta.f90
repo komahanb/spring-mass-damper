@@ -316,6 +316,16 @@ contains
        ! setup linear system in lapack format
        call this % setup_linear_system(res, jac)
 
+!!$       print*, "eqn1:", this % Q(:,1)
+!!$       print*, "eqn2:", this % Q(:,2)
+!!$             
+!!$       print*, "", this % q
+!!$
+!!$       print *, res
+!!$       print *, jac
+!!$
+!!$       print*, size
+
        ! check stopping
        if (norm2(res) .le. this % tol) then
           conv = .true.
@@ -413,7 +423,7 @@ contains
        end do
 
     end do
-    
+   
   end subroutine setup_linear_system
   
   !-------------------------------------------------------------------!
@@ -484,42 +494,37 @@ contains
     
     if (.not. this % descriptor_form) then
 
+       ! compute qdot
        do i = 1, this % num_stages
-          
-          ! compute qdot
-          call F(this % nvars, this % T(i), this % Q(i,:),this % QDOT(i,:))
-          
-          ! compute the stage residuals
+          call F(this % nvars, this % T(i), this % Q(i,:), this % QDOT(i,:))
+       end do
+
+       ! compute the stage residuals
+       do i = 1, this % num_stages
           forall(m = 1 : this % nvars)
              this % R(i,m) = this % Q(i,m) - qk(m) &
                   & - this % h * sum(this % A(i,:)*this % QDOT(:,m))
           end forall
-
-          ! print *, this % num_stages, this % R(i,:)
-
        end do
 
     else
-       
+
+       ! compute the stage states for the guessed QDOT
        do i = 1, this % num_stages
-          
-          ! compute the stage states for the guessed QDOT
           forall(m = 1 : this % nvars)
              this % Q(i,m) = qk(m) &
                   & + this % h*sum(this % A(i,:)*this % QDOT(:, m))
           end forall
+       end do
 
-          ! compute the stage residuals
+       ! compute the stage residuals
+       do i = 1, this % num_stages
           call R(this % nvars, this % T(i), this % Q(i,:), &
                & this % QDOT(i,:), this % R(i,:))
-
-          ! print *, this % num_stages, this % R(i,:)
-
        end do
-      
 
     end if
-
+    
   end subroutine compute_stage_residual
 
   !-------------------------------------------------------------------!
