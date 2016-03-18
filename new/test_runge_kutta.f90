@@ -90,7 +90,7 @@ program main
   q(:,1,1) = 0.0d0
   q(:,1,2) = 1.0d0
   
-  do kk = 1, 3
+  do kk = 1, 1
      
      if (kk.eq.1) open(unit=90, file='irk1.dat')
      if (kk.eq.2) open(unit=90, file='irk2.dat')
@@ -122,7 +122,7 @@ program main
   q(:,1,1) = 0.0d0
   q(:,1,2) = 1.0d0
   
-  do kk = 1, 3
+  do kk = 1, -3
      
      if (kk.eq.1) open(unit=90, file='dirk1.dat')
      if (kk.eq.2) open(unit=90, file='dirk2.dat')

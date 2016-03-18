@@ -326,6 +326,9 @@ contains
        dq = -res
        call DGESV(size, 1, jac, size, IPIV, dq, size, INFO)
 
+       print*, n, res
+       print*, n, jac
+
        ! check stopping
        if (norm2(dq) .le. this % tol) then
           conv = .true.
@@ -342,7 +345,11 @@ contains
        print '("Newton solve failed : time = ", E10.3, " iters = ", i3,&
             & " |R| = ",E10.3," |dq| = ",E10.3)',&
             & this % time, n, norm2(res), norm2(dq)
-       !stop
+       stop
+    else
+       print '("Newton solve: time = ", E10.3, " iters = ", i3,&
+            & " |R| = ",E10.3," |dq| = ",E10.3)',&
+            & this % time, n, norm2(res), norm2(dq)
     end if
     
     if (allocated(ipiv)) deallocate(ipiv)
@@ -525,8 +532,9 @@ contains
   subroutine compute_stage_jacobian(this)
     
     class(IRK) :: this
-    integer :: i, j, loop, kk, jj
-    real(8) :: scal
+    integer :: i, j, loop
+    integer :: kk, jj
+    
     external :: DFDQ, DRDQDOT
     
     if (.not. this % descriptor_form) then
@@ -544,37 +552,45 @@ contains
 
              if (i .eq. j) then
          
+                ! get the block 
                 call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
                      & this % J(i,j,:,:))
-                
-                this % J(i,j,:,:) = 1.0d0 - this % h * this % A(i,j) &
-                     &* this % J(i,j,:,:)
-                
+
+                ! Combine with other terms and coeffs
+                do kk = 1, this % nvars
+                   do jj = 1, this % nvars
+                      this % J(i,j,kk,jj) = 1.0d0 - this % h * this % A(i,i) &
+                           &* this % J(i,j,kk,jj)
+                   end do
+                end do
+
              else
 
                 ! off diagonal entries
-
                 ! compute only when the coeff is nonzero
-                if (this % A(i,j) .ne. 0.0d0) then
-                   
-                   call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
-                        & this % J(i,j,:,:))
-                   
-                   this % J(i,j,:,:) = - this % h * this % A(i,j) &
-                        &* this % J(i,j,:,:)
+                !if (this % A(i,j) .ne. 0.0d0) then
+                
+                call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
+                     & this % J(i,j,:,:))
 
-                end if ! non-zero
+                ! Combine with other terms and coeffs
+                do kk = 1, this % nvars
+                   do jj = 1, this % nvars
+                      this % J(i,j,kk,jj) = - this % h * this % A(i,j) &
+                           &* this % J(i,j,kk,jj)
+                   end do
+                end do
 
+                !end if ! non-zero
+                
              end if  ! diagonal or not
              
-             ! make this a diagonally dominant matrix
-             scal = norm2(this % J(i,j,:,:))
-             do kk = 1, this % nvars
-                do jj = 1, kk
-                   if (jj.eq.kk) this % J(i,j,kk,jj) = scal + this % J(i,j,kk,jj)
-                end do
-             end do
-
+!!$             ! make this a diagonally dominant matrix
+!!$             scal = norm2(this % J(i,j,:,:))
+!!$             do kk = 1, this % nvars
+!!$                this % J(i, j, kk, kk) = scal + this % J(i,j,kk,kk)
+!!$             end do
+             
           end do
 
        end do
@@ -600,26 +616,42 @@ contains
                      & this % Q(j,:), this % QDOT(j,:), &
                      & this % J(i,j,:,:))
                 
-                ! multiply with coeffs
-                this % J(i,j,:,:) = 1.0d0 + this % h * this % A(i,i) &
-                     &* this % J(i,j,:,:)
+                do kk = 1, this % nvars
+                   do jj = 1, this % nvars
+                      this % J(i,j,kk,jj) =  1.0d0 + this % h * this % A(i,i) &
+                           &* this % J(i,j,kk,jj)
+                   end do
+                end do
 
+!!$                
+!!$                ! multiply with coeffs
+!!$                this % J(i,j,:,:) = 1.0d0 + this % h * this % A(i,i) &
+!!$                     &* this % J(i,j,:,:)
+                
              else
 
                 ! off diagonal entries
 
                 ! compute only when the coeff is nonzero
-                if (this % A(i,j) .ne. 0.0d0) then
+                !if (this % A(i,j) .ne. 0.0d0) then
 
-                   call DRDQDOT(this % nvars, this % T(j), &
-                        & this % Q(j,:), this % QDOT(j,:), &
-                        & this % J(i,j,:,:))
-                   
-                   ! multiply with coeffs
-                   this % J(i,j,:,:) = this % h * this % A(i,j) &
-                        &* this % J(i,j,:,:)
-                   
-                end if ! non-zero
+                call DRDQDOT(this % nvars, this % T(j), &
+                     & this % Q(j,:), this % QDOT(j,:), &
+                     & this % J(i,j,:,:))
+                
+                do kk = 1, this % nvars
+                   do jj = 1, this % nvars
+                      this % J(i,j,kk,jj) =  this % h * this % A(i,j) &
+                           &* this % J(i,j,kk,jj)
+                   end do
+                end do
+
+!!$                   
+!!$                   ! multiply with coeffs
+!!$                   this % J(i,j,:,:) = this % h * this % A(i,j) &
+!!$                        &* this % J(i,j,:,:)
+
+                ! end if ! non-zero
                 
              end if  ! diagonal or not
              
