@@ -54,12 +54,11 @@ module implicit_runge_kutta
   end type DIRK
 
 contains
-
-
+  
   !-------------------------------------------------------------------!
   ! Butcher's tableau for DIRK 
   !-------------------------------------------------------------------!
-
+  
   subroutine ButcherDIRK(this)
 
     class(DIRK) :: this
@@ -77,7 +76,7 @@ contains
        this % A(1,1) = half
        this % B(1)   = one
        this % C(1)   = half
-       
+
        this % order = 2
 
 !!$       ! Implicit Euler (Backward Euler) but first order accurate
@@ -85,7 +84,7 @@ contains
 !!$       this % B(1)   = one
 !!$       this % C(1)   = one
 !!$       this % order = 1
-       
+
 
     else if (this % num_stages .eq. 2) then
 
@@ -114,7 +113,7 @@ contains
        this % A(2,2) = this % A(1,1)
        this % A(3,2) = -(one + 2.0d0*alpha)
        this % A(3,3) = this % A(1,1)
-       
+
        this % B(1)   = one/(6.0d0*alpha*alpha)
        this % B(2)   = one - one/(3.0d0*alpha*alpha)
        this % B(3)   = this % B(1)
@@ -122,15 +121,15 @@ contains
        this % C(1) = (one + alpha)*half
        this % C(2) = half
        this % C(3) = (one - alpha)*half
-       
+
        this % order = 4
 
     else if (this % num_stages .eq. 4) then
 
        stop "Four stage DIRK formula does not exist"
-       
+
     else
-       
+
        print *, this % num_stages
        stop "DIRK Butcher tableau is not implemented for the requested&
             & order/stages"
@@ -147,7 +146,7 @@ contains
   subroutine ButcherIRK(this)
 
     class(IRK) :: this
-    
+
     ! put the entries into the tableau
     if (this % num_stages .eq. 1) then 
 
@@ -158,13 +157,13 @@ contains
        this % C(1)   = 0.5d0
 
        this % order = 2
-       
+
 !!$       ! Implicit Euler (Backward Euler) but first order accurate
 !!$       this % A(1,1) = one
 !!$       this % B(1)   = one
 !!$       this % C(1)   = one
 !!$       this % order = 1
-       
+
 
     else if (this % num_stages .eq. 2) then 
 
@@ -246,7 +245,7 @@ contains
   !-------------------------------------------------------------------!
   ! Get the stage derivative array for the current step and states 
   !-------------------------------------------------------------------!
-  
+
   subroutine compute_stage_values_implicit(this, k, q)
 
     class(IRK) :: this
@@ -258,21 +257,21 @@ contains
     do j = 1, this % num_stages
        this % T(j) = this % time + this % C(j)*this % h
     end do
-    
+
     ! Guess the solution for stage states
     if (.not. this % descriptor_form) then
        this % Q = 1.0d0
     else 
        this % QDOT = 1.0d0 
     end if
-    
+
     ! solve the non linear stage equations using Newton's method for
     ! the actual stage states 
 
     call this % newton_solve(q(k-1,:))
 
     ! at this point Q, QDOT, T are finalized--just like ERK
-    
+
   end subroutine compute_stage_values_implicit
 
   !-------------------------------------------------------------------!
@@ -287,7 +286,7 @@ contains
   ! -------------------------------------------------------------------!
 
   subroutine newton_solve(this, qk)
-    
+
     class(IRK) :: this
     real(8), intent(in) :: qk(:)
     real(8), allocatable, dimension(:) :: res, dq
@@ -295,16 +294,16 @@ contains
     integer, allocatable, dimension(:) :: ipiv
     integer :: n, info, size
     logical :: conv = .false.
-    
+
     size = this % num_stages * this % nvars
-    
+
     if (.not.allocated(ipiv)) allocate(ipiv(size))
     if (.not.allocated(res)) allocate(res(size))
     if (.not.allocated(dq)) allocate(dq(size))
     if (.not.allocated(jac)) allocate(jac(size,size))
-    
+
     newton: do n = 1, this % max_newton
-       
+
        ! Get the residual of the function
        call this % compute_stage_residual(qk)
        this % fcnt = this % fcnt + 1
@@ -326,9 +325,6 @@ contains
        dq = -res
        call DGESV(size, 1, jac, size, IPIV, dq, size, INFO)
 
-       print*, n, res
-       print*, n, jac
-
        ! check stopping
        if (norm2(dq) .le. this % tol) then
           conv = .true.
@@ -337,7 +333,7 @@ contains
 
        ! update the solution
        call this % update_newton_state(dq)
-       
+
     end do newton
 
     ! print warning message if not converged
@@ -351,7 +347,7 @@ contains
             & " |R| = ",E10.3," |dq| = ",E10.3)',&
             & this % time, n, norm2(res), norm2(dq)
     end if
-    
+
     if (allocated(ipiv)) deallocate(ipiv)
     if (allocated(res)) deallocate(res)
     if (allocated(dq)) deallocate(dq)
@@ -368,16 +364,16 @@ contains
     implicit none
 
     class(irk) :: this
-    
+
     real(8), intent(inout), dimension(:) :: res
     real(8), intent(inout), dimension(:,:) :: jac
-    
+
     integer :: size
     integer :: i, j
     integer :: istart, iend, cnt, istart2, iend2, cnt2
 
     size = this % nvars * this % num_stages
-    
+
     cnt = 0 
 
     !-----------------------------------------------------------------!
@@ -385,14 +381,14 @@ contains
     !-----------------------------------------------------------------!
 
     do i = 1, this % num_stages
-             
+
        cnt = cnt + 1 
 
        istart = (cnt-1)*this % nvars + 1 
        iend = (cnt)*this % nvars
-       
+
        res (istart:iend) = this % R (i,:) 
-       
+
     end do
 
     !-----------------------------------------------------------------!
@@ -400,7 +396,7 @@ contains
     ! 
     ! We have a (nvar x nvar) block stored in each i,j location of this % J
     !-----------------------------------------------------------------!
-    
+
     cnt = 0    
     do i = 1, this % num_stages
 
@@ -420,18 +416,18 @@ contains
        end do
 
     end do
-   
+
   end subroutine setup_linear_system
-  
+
   !-------------------------------------------------------------------!
   ! After the solution of stage equations, we update the states using
   ! this call
   ! -------------------------------------------------------------------!
-  
+
   subroutine update_newton_state(this, sol)
-    
+
     implicit none
-    
+
     class(irk) :: this
     real(8) :: sol(:)
     integer :: i
@@ -445,34 +441,34 @@ contains
        do i = 1, this % num_stages
 
           cnt = cnt + 1 
-          
+
           istart = (cnt-1)*this % nvars + 1 
           iend = (cnt)*this % nvars
-          
+
           this % Q(i,:) = this % Q(i,:) + sol(istart:iend)
 
        end do
 
     else
-       
+
        ! update qdot(k,i)
 
        cnt = 0
        do i = 1, this % num_stages
-          
+
           cnt = cnt + 1 
-          
+
           istart = (cnt-1)*this % nvars + 1 
           iend = (cnt)*this % nvars
-          
+
           this % QDOT(i,:) = this % QDOT(i,:) + sol(istart:iend)
-          
+
        end do
 
     end if
 
   end subroutine update_newton_state
-  
+
   !-------------------------------------------------------------------!
   ! Computes the stage residual for the set stage state Y (comes from
   ! Newton's iteration) and sets into the same instance
@@ -481,14 +477,14 @@ contains
   ! i = 1,\ldots,s 
   !
   !-------------------------------------------------------------------!
-  
+
   subroutine compute_stage_residual(this, qk)
-    
+
     class(IRK) :: this
     real(8) :: qk(:)
     integer :: i, m
     external :: F, R
-    
+
     if (.not. this % descriptor_form) then
 
        ! compute qdot
@@ -521,7 +517,7 @@ contains
        end do
 
     end if
-    
+
   end subroutine compute_stage_residual
 
   !-------------------------------------------------------------------!
@@ -530,13 +526,12 @@ contains
   !-------------------------------------------------------------------!
 
   subroutine compute_stage_jacobian(this)
-    
+
     class(IRK) :: this
     integer :: i, j, loop
-    integer :: kk, jj
-    
+
     external :: DFDQ, DRDQDOT
-    
+
     if (.not. this % descriptor_form) then
 
        do i = 1, this % num_stages
@@ -551,50 +546,36 @@ contains
           do j = 1, loop
 
              if (i .eq. j) then
-         
+
                 ! get the block 
                 call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
                      & this % J(i,j,:,:))
 
                 ! Combine with other terms and coeffs
-                do kk = 1, this % nvars
-                   do jj = 1, this % nvars
-                      this % J(i,j,kk,jj) = 1.0d0 - this % h * this % A(i,i) &
-                           &* this % J(i,j,kk,jj)
-                   end do
-                end do
+                this % J(i,j,:,:) = 1.0d0 - this % h * this % A(i,j) &
+                     &* this % J(i,j,:,:)
 
              else
 
                 ! off diagonal entries
                 ! compute only when the coeff is nonzero
-                !if (this % A(i,j) .ne. 0.0d0) then
-                
-                call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
-                     & this % J(i,j,:,:))
+                if (this % A(i,j) .ne. 0.0d0) then
 
-                ! Combine with other terms and coeffs
-                do kk = 1, this % nvars
-                   do jj = 1, this % nvars
-                      this % J(i,j,kk,jj) = - this % h * this % A(i,j) &
-                           &* this % J(i,j,kk,jj)
-                   end do
-                end do
+                   call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
+                        & this % J(i,j,:,:))
 
-                !end if ! non-zero
-                
+                   ! Combine with other terms and coeffs
+                   this % J(i,j,:,:) = - this % h * this % A(i,j) &
+                        &* this % J(i,j,:,:)
+
+                end if ! non-zero
+
              end if  ! diagonal or not
-             
-!!$             ! make this a diagonally dominant matrix
-!!$             scal = norm2(this % J(i,j,:,:))
-!!$             do kk = 1, this % nvars
-!!$                this % J(i, j, kk, kk) = scal + this % J(i,j,kk,kk)
-!!$             end do
-             
+
           end do
 
        end do
-       
+
     else
 
        do i = 1, this % num_stages
@@ -615,48 +596,32 @@ contains
                 call DRDQDOT(this % nvars, this % T(j), &
                      & this % Q(j,:), this % QDOT(j,:), &
                      & this % J(i,j,:,:))
-                
-                do kk = 1, this % nvars
-                   do jj = 1, this % nvars
-                      this % J(i,j,kk,jj) =  1.0d0 + this % h * this % A(i,i) &
-                           &* this % J(i,j,kk,jj)
-                   end do
-                end do
 
-!!$                
-!!$                ! multiply with coeffs
-!!$                this % J(i,j,:,:) = 1.0d0 + this % h * this % A(i,i) &
-!!$                     &* this % J(i,j,:,:)
-                
+                ! multiply with coeffs
+                this % J(i,j,:,:) = 1.0d0 + this % h * this % A(i,i) &
+                     &* this % J(i,j,:,:)
+
              else
 
                 ! off diagonal entries
 
                 ! compute only when the coeff is nonzero
-                !if (this % A(i,j) .ne. 0.0d0) then
+                if (this % A(i,j) .ne. 0.0d0) then
 
-                call DRDQDOT(this % nvars, this % T(j), &
-                     & this % Q(j,:), this % QDOT(j,:), &
-                     & this % J(i,j,:,:))
-                
-                do kk = 1, this % nvars
-                   do jj = 1, this % nvars
-                      this % J(i,j,kk,jj) =  this % h * this % A(i,j) &
-                           &* this % J(i,j,kk,jj)
-                   end do
-                end do
+                   call DRDQDOT(this % nvars, this % T(j), &
+                        & this % Q(j,:), this % QDOT(j,:), &
+                        & this % J(i,j,:,:))
 
-!!$                   
-!!$                   ! multiply with coeffs
-!!$                   this % J(i,j,:,:) = this % h * this % A(i,j) &
-!!$                        &* this % J(i,j,:,:)
+                   ! multiply with coeffs
+                   this % J(i,j,:,:) = this % h * this % A(i,j) &
+                        &* this % J(i,j,:,:)
 
-                ! end if ! non-zero
-                
+                end if ! non-zero
+
              end if  ! diagonal or not
-             
+
           end do
-          
+
        end do
 
     end if
@@ -664,3 +629,10 @@ contains
   end subroutine compute_stage_jacobian
 
 end module implicit_runge_kutta
+
+
+
+
+
+
+
