@@ -76,8 +76,11 @@ subroutine R(nvars, time, q, qdot, res)
 
   else
 
-     res(1) = qdot(1) - q(2) + 2.0d0 * q(1)
-     res(2) = qdot(2) + 0.5d0*q(1) + 2.5d0*q(2)
+     res(1) = qdot(1) - q(2)
+     res(2) = qdot(2) + 0.5d0*q(1) - 2.5d0*q(2)
+
+!!$     res(1) = qdot(1) - q(2) + 2.0d0 * q(1)
+!!$     res(2) = qdot(2) + 0.5d0*q(1) + 2.5d0*q(2)
 
   end if
 
@@ -104,18 +107,19 @@ subroutine DRDQ(nvars, time, q, qdot, J)
 
   else
 
-     !res(1) = qdot(1) - q(2) + 2.0d0 * q(1)
-     !res(2) = qdot(2) + 0.5d0*q(1) + 2.5d0*q(2)
 
+     !res(1) = qdot(1) - q(2)
+     !res(2) = qdot(2) + 0.5d0*q(1) - 2.5d0*q(2)
+     
      ! derivative of first equation
 
-     J(1,1) = J(1,1) + 2.0d0
+     J(1,1) = J(1,1) + 0.0d0
      J(1,2) = J(1,2) - 1.0d0
 
      ! derivative of second equation
 
      J(2,1) = J(2,1) + 0.5d0
-     J(2,2) = J(2,2) + 2.5d0
+     J(2,2) = J(2,2) - 2.5d0
 
   end if
 
@@ -142,8 +146,8 @@ subroutine DRDQDOT(nvars, time, q, qdot, J)
      
   else 
 
-     !res(1) = qdot(1) - q(2) + 2.0d0 * q(1)
-     !res(2) = qdot(2) + 0.5d0*q(1) + 2.5d0*q(2)
+     !res(1) = qdot(1) - q(2)
+     !res(2) = qdot(2) + 0.5d0*q(1) - 2.5d0*q(2)
 
      ! derivative of first equation
 
