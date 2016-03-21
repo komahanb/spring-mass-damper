@@ -571,8 +571,8 @@ contains
        this % QDOT(i,:) = this % QDOT(i,:) + sol(:)
 
        !update q for i-th stage
-       this % Q(i,:) = this % Q(i,:) &
-            & + this % h * sum(this % A(i,:)*this % QDOT(i,:))
+!!$       this % Q(i,:) = this % Q(i,:) &
+!!$            & + this % h * sum(this % A(i,:)*this % QDOT(i,:))
 
     end if
     
@@ -944,7 +944,7 @@ contains
 
     if (maxval(abs(exact_jac - jtmp)) .gt. small) then
        print *, "WARNING: Possible error in jacobian", &
-            & maxval(abs(exact_jac - jtmp)), maxval(abs(jtmp-exact_jac))
+            & maxval(abs(exact_jac - jtmp))
     end if
 
 !!$ exact_jac = jtmp

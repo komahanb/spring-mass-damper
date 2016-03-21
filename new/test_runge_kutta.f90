@@ -11,9 +11,9 @@ program main
 
   integer :: i, kk
 
-  integer, parameter :: M = 2
+  integer, parameter :: M = 3
   real(8), parameter :: h =  0.05d0
-  real(8), parameter :: tinit = 3.0d0
+  real(8), parameter :: tinit = 0.0d0
   real(8), parameter :: tfinal = 5.0d0
 
   real(8), allocatable, dimension(:,:,:) :: q, qdot
@@ -51,12 +51,26 @@ program main
   !-------------------------------------------------------------------!
   ! Explicit Runge Kutta
   !-------------------------------------------------------------------!
-
+  
   q = 0.0d0
   qdot = 0.0d0
+  
+  if (M .eq. 1) then
 
-  q(:,1,1) = 1.0d0
-  if (M .eq. 2) q(:,1,2) = 1.0d0
+     q(:,1,1) = 0.0d0
+
+  else if (M .eq. 2) then
+
+     q(:,1,1) = 0.0d0
+     q(:,1,2) = 1.0d0
+
+  else if (M .eq. 3) then
+
+     q(:,1,1) = 1.0d0
+     q(:,1,2) = 2.0d0
+     q(:,1,3) = 3.0d0
+
+  end if
   
   do kk = 1, 3
      
@@ -85,12 +99,26 @@ program main
   !-------------------------------------------------------------------!
   
   if (M .eq. 1) then
-     
+
      q = 0.0d0
      qdot = 0.0d0
 
-     q(:,1,1) = 1.0d0
-     if (M .eq. 2) q(:,1,2) = 1.0d0
+     if (M .eq. 1) then
+
+        q(:,1,1) = 0.0d0
+
+     else if (M .eq. 2) then
+
+        q(:,1,1) = 0.0d0
+        q(:,1,2) = 1.0d0
+
+     else if (M .eq. 3) then
+
+        q(:,1,1) = 1.0d0
+        q(:,1,2) = 2.0d0
+        q(:,1,3) = 3.0d0
+
+     end if
 
      do kk = 1, 3
 
@@ -119,13 +147,27 @@ program main
   !-------------------------------------------------------------------!
   ! Diagonally Implicit Runge Kutta
   !-------------------------------------------------------------------!
-
+  
   q = 0.0d0
   qdot = 0.0d0
-  
-  q(:,1,1) = 1.0d0
-  if (M .eq. 2) q(:,1,2) = 1.0d0
-  
+
+  if (M .eq. 1) then
+
+     q(:,1,1) = 0.0d0
+
+  else if (M .eq. 2) then
+
+     q(:,1,1) = 0.0d0
+     q(:,1,2) = 1.0d0
+
+  else if (M .eq. 3) then
+
+     q(:,1,1) = 1.0d0
+     q(:,1,2) = 2.0d0
+     q(:,1,3) = 3.0d0
+
+  end if
+
   do kk = 1, 3
      
      if (kk.eq.1) open(unit=90, file='dirk1.dat')
