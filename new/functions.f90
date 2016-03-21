@@ -2,7 +2,7 @@
 ! Function in Explicit form qdot = f(t, q)
 !-------------------------------------------------------------------!
 
-subroutine F(nvars,time, q, qdot)
+subroutine F(nvars, time, q, qdot)
 
   implicit none
 
@@ -56,6 +56,39 @@ subroutine DFDQ(nvars, time, q, J)
   end if
 
 end subroutine DFDQ
+
+!-------------------------------------------------------------------!
+! DFDQ of the function
+!-------------------------------------------------------------------!
+
+subroutine DFDQDOT(nvars, time, q, J)
+
+  implicit none
+
+  integer, intent(in) :: nvars  
+  real(8), intent(in) :: time
+  real(8), intent(in) :: q(nvars)
+  real(8), intent(inout) :: J(nvars, nvars)
+  
+  if (nvars .eq. 1) then
+
+     J(1,1) = J(1,1) + 1.0d0
+
+  else
+
+     ! derivative of first equation
+
+     J(1,1) = J(1,1) + 1.0d0
+     J(1,2) = J(1,2) + 0.0d0
+
+     ! derivative of second equation
+
+     J(2,1) = J(2,1) + 0.0d0
+     J(2,2) = J(2,2) + 1.0d0
+
+  end if
+
+end subroutine DFDQDOT
 
 !-------------------------------------------------------------------!
 ! Function in Implicit form R(t, q, qot) = 0 
