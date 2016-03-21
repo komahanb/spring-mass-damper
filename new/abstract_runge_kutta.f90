@@ -27,7 +27,7 @@ module abstract_runge_kutta
 
      integer :: num_stages = 1  ! default number of stages
      integer :: order           ! order of accuracy
-
+     integer :: nvars = 1       ! number of states/equations
      real(8) :: h = 0.1d0       ! default step size (will reconsider when implementing adaptive step size)
      real(8) :: time            ! scalar to track integration time
      
@@ -38,11 +38,11 @@ module abstract_runge_kutta
 
      ! The stage time and its corresponding derivatives
      real(8), dimension(:)  , allocatable :: T ! the corresponding stage time
-     real(8), dimension(:)  , allocatable :: Q ! the corresponding state
-     real(8), dimension(:)  , allocatable :: QDOT ! the stage derivatives K = F(T,Q)
+     real(8), dimension(:,:)  , allocatable :: Q ! the corresponding state
+     real(8), dimension(:,:)  , allocatable :: QDOT ! the stage derivatives K = F(T,Q)
 
-     real(8), dimension(:)  , allocatable :: R ! stage residual
-     real(8), dimension(:,:), allocatable :: J ! stage jacobian
+     real(8), dimension(:,:)  , allocatable :: R ! stage residual
+     real(8), dimension(:,:,:,:), allocatable :: J ! stage jacobian
      
      ! The form of the governing equation
      logical :: descriptor_form = .true.
@@ -80,7 +80,7 @@ module abstract_runge_kutta
        import RK
        class(RK) :: this
        integer, intent(in) :: k 
-       real(8), intent(in), dimension(:) :: q
+       real(8), intent(in), dimension(:,:) :: q
      end subroutine compute_stage_values_interface
 
      !----------------------------------------------------------------!
@@ -101,10 +101,11 @@ contains
   ! Initialize the dirk datatype and construct the tableau
   !-------------------------------------------------------------------!
 
-  subroutine initialize(this, tinit, num_stages, h)
+  subroutine initialize(this, nvars, tinit, num_stages, h)
 
     class(RK) :: this
     integer, OPTIONAL, intent(in) :: num_stages
+    integer, OPTIONAL, intent(in) :: nvars
     real(8), OPTIONAL, intent(in) :: tinit
     real(8), OPTIONAL, intent(in) :: h
 
@@ -137,6 +138,16 @@ contains
     else
        print '("Using default step size h : ", E9.3)', this % h
     end if
+
+    !-----------------------------------------------------------------!
+    ! set the user supplied number of variables
+    !-----------------------------------------------------------------!
+    
+    if (present(nvars)) then
+       this % nvars = nvars 
+    else
+       print '("Using default nvars : ", i4)', this % nvars
+    end if
     
     !-----------------------------------------------------------------!
     ! allocate space for the tableau
@@ -152,18 +163,18 @@ contains
     this % C = 0.0d0
 
     !-----------------------------------------------------------------!
-    ! allocate space for the stage derivatives
-    !-----------------------------------------------------------------!
-
-    allocate(this % QDOT(this % num_stages))
-    this % QDOT = 0.0d0
-
-    !-----------------------------------------------------------------!
     ! allocate space for the stage state
     !-----------------------------------------------------------------!
 
-    allocate(this % Q(this % num_stages))
+    allocate(this % Q(this % num_stages, this % nvars))
     this % Q = 0.0d0
+
+    !-----------------------------------------------------------------!
+    ! allocate space for the stage derivatives
+    !-----------------------------------------------------------------!
+
+    allocate(this % QDOT(this % num_stages, this % nvars))
+    this % QDOT = 0.0d0
 
     !-----------------------------------------------------------------!
     ! allocate space for the stage time
@@ -176,14 +187,15 @@ contains
     ! allocate space for the stage time
     !-----------------------------------------------------------------!
 
-    allocate(this % R(this % num_stages))
+    allocate(this % R(this % num_stages, this % nvars))
     this % R = 0.0d0
 
     !-----------------------------------------------------------------!
     ! allocate space for the stage time
     !-----------------------------------------------------------------!
-
-    allocate(this % J(this % num_stages, this % num_stages))
+    
+    allocate(this % J(this % num_stages,&
+         & this % num_stages, this % nvars, this % nvars))
     this % J = 0.0d0
 
     !-----------------------------------------------------------------!
@@ -266,13 +278,13 @@ contains
   subroutine Integrate(this, q, qdot, N)
 
     class(RK) :: this
-    real(8), intent(inout), dimension(:) :: q, qdot
+    real(8), intent(inout), dimension(:,:) :: q, qdot !q(time, var)
     integer, intent(in) :: N 
     integer :: k
 
     ! March in time
     march: do k = 2, N + 1
-
+       
        ! find the stage derivatives at the current step
        call this % compute_stage_values(k, q)
 
@@ -292,17 +304,22 @@ contains
 
   subroutine update_states(this, k, q, qdot)
 
+    implicit none
+
     class(RK) :: this
     integer, intent(in) :: k ! current time step
-    real(8), intent(inout), dimension(:) :: q ! actual states
-    real(8), intent(inout), dimension(:) :: qdot ! actual state    
+    real(8),  dimension(:,:) :: q, qdot ! actual states
+    integer :: m
 
+    ! update q for all m variables
+    forall(m=1:this%nvars)
+       q(k,m) = q(k-1,m) + this % h*sum(this % B(1:this%num_stages) &
+            &* this % QDOT(1:this%num_stages,m))
+    end forall
+    
     ! increment the time
     this % time = this % time + this % h
-    
-    ! update q (for first order ODE)
-    q(k) = q(k-1) + this % h*sum(this % B * this % QDOT)
-    
+
   end subroutine update_states
 
   !-------------------------------------------------------------------!
