@@ -55,6 +55,7 @@ module implicit_runge_kutta
      procedure :: setup_linear_system => setup_linear_system_dirk
      procedure :: compute_stage_jacobian => compute_stage_jacobian_dirk
      procedure :: update_newton_state => update_newton_state_dirk
+     procedure :: check_jacobian
 
   end type DIRK
 
@@ -542,7 +543,6 @@ contains
 
   end subroutine update_newton_state
 
-
   !-------------------------------------------------------------------!
   ! After the solution of stage equations, we update the states using
   ! this call
@@ -560,20 +560,20 @@ contains
 
     if (.not. this % descriptor_form) then
 
-       ! update q(k,i)       
-
+       ! update q(k,i) for i-th stage     
        this % Q(i,:) = this % Q(i,:) + sol(:)
 
-       !update qDOT?
+       !update qDOT for i-th stage
 
     else
 
-       ! update qdot(k,i)
-
+       ! update qdot(k,i) for i-th stage
        this % QDOT(i,:) = this % QDOT(i,:) + sol(:)
 
-       !update q
-       
+       !update q for i-th stage
+       this % Q(i,:) = this % Q(i,:) &
+            & + this % h * sum(this % A(i,:)*this % QDOT(i,:))
+
     end if
     
   end subroutine update_newton_state_dirk
@@ -600,7 +600,6 @@ contains
              istart = i
              iend = i
              found = .true.
-             !print *, "Current Stage:", i
              exit findstagenum
           end if
 
@@ -686,6 +685,8 @@ contains
     ! get the appropriate indices based on type and stage number
     call this % find_indices(j, i)
 
+    this % J(i,j,:,:) = 0.0d0
+
     if (.not. this % descriptor_form) then
 
        ! get the block 
@@ -698,14 +699,22 @@ contains
 
     else
        
-       ! get the block
-       call DRDQDOT(this % nvars, this % T(j), &
+       ! get the q block
+       call DRDQ(this % nvars, this % T(j), &
             & this % Q(j,:), this % QDOT(j,:), &
             & this % J(i,j,:,:))
 
        ! multiply with coeffs
-       this % J(i,j,:,:) = 1.0d0 + this % h * this % A(i,i) &
+       this % J(i,j,:,:) = this % h * this % A(i,i) &
             &* this % J(i,j,:,:)
+
+       ! get the qdot block
+       call DRDQDOT(this % nvars, this % T(j), &
+            & this % Q(j,:), this % QDOT(j,:), &
+            & this % J(i,j,:,:))
+
+       ! check with FD
+       call this % check_jacobian(i, this % J(i,j,:,:))
 
     end if
 
@@ -719,7 +728,7 @@ contains
   subroutine compute_stage_jacobian(this)
 
     class(IRK) :: this
-    integer :: i, j, loop
+    integer :: i, j
     integer :: istart, iend
     external :: DFDQ, DRDQDOT
 
@@ -730,14 +739,7 @@ contains
 
        do i = 1, this % num_stages
 
-          select type (this)
-          type is (DIRK)
-             loop = i
-          type is (IRK)
-             loop = this % num_stages
-          end select
-
-          do j = 1, loop
+          do j = 1, this % num_stages
 
              if (i .eq. j) then
 
@@ -774,14 +776,7 @@ contains
 
        do i = 1, this % num_stages
 
-          select type(this)
-          type is (DIRK)
-             loop = i
-          type is (IRK)
-             loop = this % num_stages
-          end select
-
-          do j = 1, loop
+          do j = 1, this % num_stages
 
              if (i .eq. j) then
 
@@ -821,6 +816,93 @@ contains
     end if
 
   end subroutine compute_stage_jacobian
+
+  !-------------------------------------------------------------------!  
+  ! Routine to sanity check the jacobian of the governing equations
+  !-------------------------------------------------------------------!
+
+  subroutine check_jacobian(this, i, exact_jac)
+
+    class(dirk) :: this
+
+    integer, intent(in) :: i
+    real(8), intent(inout) :: exact_jac(:,:)
+
+    real(8), allocatable, dimension(:) :: tmp1, tmp2, qtmp, qdottmp
+    real(8), allocatable, dimension(:,:) :: jtmp1, jtmp2, jtmp
+    real(8) :: small = 1.0d-6
+    integer :: k
+
+    allocate(qtmp(this % nvars)); qtmp = 0.0d0;
+    allocate(qdottmp(this % nvars)); qdottmp = 0.0d0;
+
+    allocate(tmp1(this % nvars)); tmp1 = 0.0d0;
+    allocate(tmp2(this % nvars)); tmp2 = 0.0d0;
+
+    allocate(jtmp (this % nvars, this % nvars)); jtmp = 0.0d0;
+    allocate(jtmp1(this % nvars, this % nvars)); jtmp1 = 0.0d0;
+    allocate(jtmp2(this % nvars, this % nvars)); jtmp2 = 0.0d0;
+
+    call R(this % nvars, this % T(i), this % Q(i,:), &
+         & this % QDOT(i,:), tmp2)
+
+    !-----------------------------------------------------------------!
+    ! Derivative WRT Q
+    !-----------------------------------------------------------------!
+
+    qtmp(:) = this % Q(i,:)
+
+    do k = 1, this % nvars
+
+       ! perturb the k-th variable
+       qtmp(k) = this % Q(i,k) + small
+
+       call R(this % nvars, this % T(i), qtmp, this % QDOT(i,:), tmp1)
+
+       ! unperturb the k-th variable
+       qtmp(k) = this % Q(i,k)
+
+       ! approximate the jacobian with respect to the k-th variable
+       jtmp1(:,k) = (tmp1-tmp2)/small
+
+    end do
+
+    jtmp1 =  this % h * this % A(i,i) * jtmp1
+    
+    !-----------------------------------------------------------------!
+    ! Derivative WRT QDOT
+    !-----------------------------------------------------------------!
+
+    qdottmp(:) = this % QDOT(i,:)
+
+    do k = 1, this % nvars
+
+       ! perturb the k-th variable
+       qdottmp(k) = this % Qdot(i,k) + small
+
+       call R(this % nvars, this % T(i), this % Q(i,:), &
+            & qdottmp, tmp1)
+
+       ! unperturb the k-th variable
+       qdottmp(k) = this % Qdot(i,k)
+
+       jtmp2(:,k) = (tmp1-tmp2)/small
+
+    end do
+
+    jtmp = jtmp2 + jtmp1
+
+    if (abs(maxval(jtmp - exact_jac)) .gt. this % tol/small) then
+       print *, "WARNING: Possible error in jacobian", maxval(jtmp - exact_jac)
+    end if
+
+!!$ exact_jac = jtmp
+
+    deallocate(qtmp,qdottmp)
+    deallocate(tmp1,tmp2)
+    deallocate(jtmp1,jtmp2,jtmp)
+
+  end subroutine check_jacobian
 
 end module implicit_runge_kutta
 

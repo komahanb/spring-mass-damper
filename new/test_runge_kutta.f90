@@ -12,7 +12,7 @@ program main
   integer :: i, kk
 
   integer, parameter :: M = 2
-  real(8), parameter :: h =  0.1d-1
+  real(8), parameter :: h =  0.05d0
   real(8), parameter :: tinit = 3.0d0
   real(8), parameter :: tfinal = 5.0d0
 
@@ -55,8 +55,8 @@ program main
   q = 0.0d0
   qdot = 0.0d0
 
-  q(:,1,1) = 0.0d0
-  q(:,1,2) = 1.0d0
+  q(:,1,1) = 1.0d0
+  if (M .eq. 2) q(:,1,2) = 1.0d0
   
   do kk = 1, 3
      
@@ -67,9 +67,9 @@ program main
      ! Test for each RK 
      ERKOBJ % descriptor_form = descriptor
 
-     call ERKOBJ  % initialize(nvars=M,h=h,tinit=tinit,num_stages=kk)
-     call ERKOBJ  % integrate(q(kk,:,:), qdot(kk,:,:), N)
-     call ERKOBJ  % finalize()
+     call ERKOBJ % initialize(nvars=M,h=h,tinit=tinit,num_stages=kk)
+     call ERKOBJ % integrate(q(kk,:,:), qdot(kk,:,:), N)
+     call ERKOBJ % finalize()
      
      ! Find the error
      do i = 1, N + 1
@@ -83,34 +83,38 @@ program main
   !-------------------------------------------------------------------!
   ! Implicit Runge Kutta
   !-------------------------------------------------------------------!
+  
+  if (M .eq. 1) then
+     
+     q = 0.0d0
+     qdot = 0.0d0
 
-  q = 0.0d0
-  qdot = 0.0d0
-  
-  q(:,1,1) = 0.0d0
-  q(:,1,2) = 1.0d0
-  
-  do kk = 1, 3
-     
-     if (kk.eq.1) open(unit=90, file='irk1.dat')
-     if (kk.eq.2) open(unit=90, file='irk2.dat')
-     if (kk.eq.3) open(unit=90, file='irk3.dat')
-     
-     ! Test for each RK 
-     IRKOBJ % descriptor_form = descriptor
-     
-     call IRKOBJ  % initialize(nvars=M,h=h,tinit=tinit,num_stages=kk)
-     call IRKOBJ  % integrate(q(kk,:,:), qdot(kk,:,:), N)
-     call IRKOBJ  % finalize()
-     
-     ! Find the error
-     do i = 1, N + 1
-        write(90, *)  tinit + dble(i-1)*h, (q(kk,i,j),j=1,M)
+     q(:,1,1) = 1.0d0
+     if (M .eq. 2) q(:,1,2) = 1.0d0
+
+     do kk = 1, 3
+
+        if (kk.eq.1) open(unit=90, file='irk1.dat')
+        if (kk.eq.2) open(unit=90, file='irk2.dat')
+        if (kk.eq.3) open(unit=90, file='irk3.dat')
+
+        ! Test for each RK 
+        IRKOBJ % descriptor_form = descriptor
+
+        call IRKOBJ  % initialize(nvars=M,h=h,tinit=tinit,num_stages=kk)
+        call IRKOBJ  % integrate(q(kk,:,:), qdot(kk,:,:), N)
+        call IRKOBJ  % finalize()
+
+        ! Find the error
+        do i = 1, N + 1
+           write(90, *)  tinit + dble(i-1)*h, (q(kk,i,j),j=1,M)
+        end do
+
+        close(90)
+
      end do
 
-  close(90)
-
-  end do
+  end if
 
   !-------------------------------------------------------------------!
   ! Diagonally Implicit Runge Kutta
@@ -119,8 +123,8 @@ program main
   q = 0.0d0
   qdot = 0.0d0
   
-  q(:,1,1) = 0.0d0
-  q(:,1,2) = 1.0d0
+  q(:,1,1) = 1.0d0
+  if (M .eq. 2) q(:,1,2) = 1.0d0
   
   do kk = 1, 3
      
@@ -131,9 +135,9 @@ program main
      ! Test for each RK 
      DIRKOBJ % descriptor_form = descriptor
      
-     call DIRKOBJ  % initialize(nvars=M,h=h,tinit=tinit,num_stages=kk)
-     call DIRKOBJ  % integrate(q(kk,:,:), qdot(kk,:,:), N)
-     call DIRKOBJ  % finalize()
+     call DIRKOBJ % initialize(nvars=M,h=h,tinit=tinit,num_stages=kk)
+     call DIRKOBJ % integrate(q(kk,:,:), qdot(kk,:,:), N)
+     call DIRKOBJ % finalize()
      
      ! Find the error
      do i = 1, N + 1
