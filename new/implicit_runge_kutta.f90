@@ -680,7 +680,8 @@ contains
 
     class(DIRK) :: this
     integer :: i, j
-    external :: DFDQ, DRDQDOT
+    external :: DFDQ, DFDQDOT
+    external :: DRDQ, DRDQDOT
 
     ! get the appropriate indices based on type and stage number
     call this % find_indices(j, i)
@@ -689,14 +690,18 @@ contains
 
     if (.not. this % descriptor_form) then
 
-       ! get the block 
+       ! get the q block
        call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
             & this % J(i,j,:,:))
-
-       ! Combine with other terms and coeffs
-       this % J(i,j,:,:) = 1.0d0 - this % h * this % A(i,j) &
+       
+       ! multiply with coeffs
+       this % J(i,j,:,:) = - this % h * this % A(i,j) &
             &* this % J(i,j,:,:)
-
+       
+       ! get the qdot block
+       call DFDQDOT(this % nvars, this % T(j), this % Q(j,:),&
+            & this % J(i,j,:,:))
+       
     else
        
        ! get the q block
@@ -713,10 +718,10 @@ contains
             & this % Q(j,:), this % QDOT(j,:), &
             & this % J(i,j,:,:))
 
-       ! check with FD
-       call this % check_jacobian(i, this % J(i,j,:,:))
-
     end if
+    
+    ! check with FD
+    call this % check_jacobian(i, this % J(i,j,:,:))
 
   end subroutine compute_stage_jacobian_dirk
 
@@ -843,57 +848,103 @@ contains
     allocate(jtmp1(this % nvars, this % nvars)); jtmp1 = 0.0d0;
     allocate(jtmp2(this % nvars, this % nvars)); jtmp2 = 0.0d0;
 
-    call R(this % nvars, this % T(i), this % Q(i,:), &
-         & this % QDOT(i,:), tmp2)
-
-    !-----------------------------------------------------------------!
-    ! Derivative WRT Q
-    !-----------------------------------------------------------------!
-
-    qtmp(:) = this % Q(i,:)
-
-    do k = 1, this % nvars
-
-       ! perturb the k-th variable
-       qtmp(k) = this % Q(i,k) + small
-
-       call R(this % nvars, this % T(i), qtmp, this % QDOT(i,:), tmp1)
-
-       ! unperturb the k-th variable
-       qtmp(k) = this % Q(i,k)
-
-       ! approximate the jacobian with respect to the k-th variable
-       jtmp1(:,k) = (tmp1-tmp2)/small
-
-    end do
-
-    jtmp1 =  this % h * this % A(i,i) * jtmp1
     
-    !-----------------------------------------------------------------!
-    ! Derivative WRT QDOT
-    !-----------------------------------------------------------------!
+    if (.not. this % descriptor_form) then
 
-    qdottmp(:) = this % QDOT(i,:)
+       call F(this % nvars, this % T(i), this % Q(i,:), tmp2)
 
-    do k = 1, this % nvars
+       !--------------------------------------------------------------!
+       ! Derivative of F WRT Q
+       !--------------------------------------------------------------!
 
-       ! perturb the k-th variable
-       qdottmp(k) = this % Qdot(i,k) + small
+       ! store the original q
+       qtmp(:) = this % Q(i,:)
+
+       do k = 1, this % nvars
+
+          ! perturb the k-th variable
+          qtmp(k) = this % Q(i,k) + small
+
+          call F(this % nvars, this % T(i), qtmp, tmp1)
+
+          ! unperturb the k-th variable
+          qtmp(k) = this % Q(i,k)
+
+          ! approximate the jacobian with respect to the k-th variable
+          jtmp1(:,k) = (tmp1-tmp2)/small
+
+       end do
+
+       jtmp1 =  - this % h * this % A(i,i) * jtmp1
+  
+       !--------------------------------------------------------------!
+       ! Derivative of F WRT QDOT
+       !--------------------------------------------------------------!
+       
+       jtmp2 = 0.0d0
+       
+       ! identity matrix
+       do k = 1, this % nvars
+          jtmp2(k,k) = 1.0d0
+       end do
+
+    else
 
        call R(this % nvars, this % T(i), this % Q(i,:), &
-            & qdottmp, tmp1)
+            & this % QDOT(i,:), tmp2)
+       
+       !--------------------------------------------------------------!
+       ! Derivative of R WRT Q
+       !--------------------------------------------------------------!
+       
+       qtmp(:) = this % Q(i,:)
 
-       ! unperturb the k-th variable
-       qdottmp(k) = this % Qdot(i,k)
+       do k = 1, this % nvars
 
-       jtmp2(:,k) = (tmp1-tmp2)/small
+          ! perturb the k-th variable
+          qtmp(k) = this % Q(i,k) + small
 
-    end do
+          call R(this % nvars, this % T(i), qtmp, this % QDOT(i,:), tmp1)
 
+          ! unperturb the k-th variable
+          qtmp(k) = this % Q(i,k)
+
+          ! approximate the jacobian with respect to the k-th variable
+          jtmp1(:,k) = (tmp1-tmp2)/small
+
+       end do
+
+       jtmp1 =  this % h * this % A(i,i) * jtmp1
+
+       !-----------------------------------------------------------------!
+       ! Derivative of R WRT QDOT
+       !-----------------------------------------------------------------!
+
+       qdottmp(:) = this % QDOT(i,:)
+
+       do k = 1, this % nvars
+
+          ! perturb the k-th variable
+          qdottmp(k) = this % Qdot(i,k) + small
+
+          call R(this % nvars, this % T(i), this % Q(i,:), &
+               & qdottmp, tmp1)
+
+          ! unperturb the k-th variable
+          qdottmp(k) = this % Qdot(i,k)
+
+          jtmp2(:,k) = (tmp1-tmp2)/small
+
+       end do
+
+    end if
+
+    ! sum the jacobian components to get the total derivative
     jtmp = jtmp2 + jtmp1
 
-    if (abs(maxval(jtmp - exact_jac)) .gt. this % tol/small) then
-       print *, "WARNING: Possible error in jacobian", maxval(jtmp - exact_jac)
+    if (maxval(abs(exact_jac - jtmp)) .gt. small) then
+       print *, "WARNING: Possible error in jacobian", &
+            & maxval(abs(exact_jac - jtmp)), maxval(abs(jtmp-exact_jac))
     end if
 
 !!$ exact_jac = jtmp
