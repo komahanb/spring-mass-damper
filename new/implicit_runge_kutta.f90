@@ -27,7 +27,7 @@ module implicit_runge_kutta
 
      ! implement/override the abstract class routines
      procedure :: setup_butcher_tableau => ButcherIRK
-     procedure :: compute_stage_values => compute_stage_values_implicit
+     procedure :: compute_stage_values => compute_stage_values_irk
 
      ! Routines that are common to IRK and its subtypes
      procedure :: newton_solve
@@ -35,6 +35,7 @@ module implicit_runge_kutta
      procedure :: setup_linear_system
      procedure :: compute_stage_residual
      procedure :: compute_stage_jacobian
+     procedure :: find_indices
 
   end type IRK
 
@@ -50,6 +51,10 @@ module implicit_runge_kutta
 
      ! implement/override the abstract class routines
      procedure :: setup_butcher_tableau => ButcherDIRK
+     procedure :: compute_stage_values => compute_stage_values_dirk
+     procedure :: setup_linear_system => setup_linear_system_dirk
+     procedure :: compute_stage_jacobian => compute_stage_jacobian_dirk
+     procedure :: update_newton_state => update_newton_state_dirk
 
   end type DIRK
 
@@ -241,12 +246,12 @@ contains
 
   end subroutine ButcherIRK
 
-
   !-------------------------------------------------------------------!
-  ! Get the stage derivative array for the current step and states 
+  ! Get the stage derivative array for the current step and states for
+  ! IRK
   !-------------------------------------------------------------------!
 
-  subroutine compute_stage_values_implicit(this, k, q)
+  subroutine compute_stage_values_irk(this, k, q)
 
     class(IRK) :: this
     integer, intent(in) :: k 
@@ -272,7 +277,42 @@ contains
 
     ! at this point Q, QDOT, T are finalized--just like ERK
 
-  end subroutine compute_stage_values_implicit
+  end subroutine compute_stage_values_irk
+  
+  !-------------------------------------------------------------------!
+  ! Get the stage derivative array for the current step and states for
+  ! DIRK
+  !-------------------------------------------------------------------!
+  
+  subroutine compute_stage_values_dirk(this, k, q)
+    
+    class(DIRK) :: this
+    integer, intent(in) :: k 
+    real(8), intent(in), dimension(:,:) :: q
+    integer :: j
+
+    do j = 1, this % num_stages
+
+       ! Find the stage times
+
+       this % T(j) = this % time + this % C(j)*this % h
+
+       ! Guess the solution for stage states
+
+       if (.not. this % descriptor_form) then
+          this % Q(j,:) = 1.0d0
+       else 
+          this % QDOT(j,:) = 1.0d0 
+       end if
+
+       ! solve the non linear stage equations using Newton's method for
+       ! the actual stage states 
+
+       call this % newton_solve(q(k-1,:))
+
+    end do
+
+  end subroutine compute_stage_values_dirk
 
   !-------------------------------------------------------------------!
   ! Solve nonlinear stage equations using Newton's method at each time
@@ -294,33 +334,39 @@ contains
     integer, allocatable, dimension(:) :: ipiv
     integer :: n, info, size
     logical :: conv = .false.
-
-    size = this % num_stages * this % nvars
-
+    
+    ! find the size of the linear system based on the calling object
+    select type (this)
+    type is (DIRK)
+       size = this % nvars
+    type is (IRK)
+       size = this % num_stages * this % nvars
+    end select
+    
     if (.not.allocated(ipiv)) allocate(ipiv(size))
     if (.not.allocated(res)) allocate(res(size))
     if (.not.allocated(dq)) allocate(dq(size))
     if (.not.allocated(jac)) allocate(jac(size,size))
-
+    
     newton: do n = 1, this % max_newton
-
+       
        ! Get the residual of the function
        call this % compute_stage_residual(qk)
        this % fcnt = this % fcnt + 1
-
+       
        ! Get the jacobian matrix
        call this % compute_stage_jacobian()
        this % fgcnt = this % fgcnt + 1
-
+       
        ! setup linear system in lapack format
        call this % setup_linear_system(res, jac)
-
+       
        ! check stopping
        if (norm2(res) .le. this % tol) then
           conv = .true.
           exit newton
        end if
-
+       
        ! call lapack to solve the stage values system
        dq = -res
        call DGESV(size, 1, jac, size, IPIV, dq, size, INFO)
@@ -354,6 +400,29 @@ contains
     if (allocated(jac)) deallocate(jac)
 
   end subroutine newton_solve
+
+  !-------------------------------------------------------------------!
+  ! Routine that packs the matrix in a form that is used in lapack
+  !-------------------------------------------------------------------!
+
+  subroutine setup_linear_system_dirk(this, res, jac)
+
+    implicit none
+
+    class(dirk) :: this
+
+    real(8), intent(inout), dimension(:) :: res
+    real(8), intent(inout), dimension(:,:) :: jac
+
+    integer :: stage_num
+
+    call this % find_indices(stage_num, stage_num)
+
+    res = this % R(stage_num,:)
+    
+    jac = this % J(stage_num, stage_num, :, :)
+    
+  end subroutine setup_linear_system_dirk
 
   !-------------------------------------------------------------------!
   ! Routine that packs the matrix in a form that is used in lapack
@@ -420,7 +489,7 @@ contains
   end subroutine setup_linear_system
 
   !-------------------------------------------------------------------!
-  ! After the solution of stage equations, we update the states using
+  ! During the solution of stage equations, we update the states using
   ! this call
   ! -------------------------------------------------------------------!
 
@@ -447,6 +516,8 @@ contains
 
           this % Q(i,:) = this % Q(i,:) + sol(istart:iend)
 
+          !update q?
+
        end do
 
     else
@@ -463,11 +534,88 @@ contains
 
           this % QDOT(i,:) = this % QDOT(i,:) + sol(istart:iend)
 
-       end do
+          !update q?
 
+       end do
+       
     end if
 
   end subroutine update_newton_state
+
+
+  !-------------------------------------------------------------------!
+  ! After the solution of stage equations, we update the states using
+  ! this call
+  ! -------------------------------------------------------------------!
+
+  subroutine update_newton_state_dirk(this, sol)
+
+    implicit none
+
+    class(dirk) :: this
+    real(8) :: sol(:)
+    integer :: i
+    
+    call this % find_indices(i, i)
+
+    if (.not. this % descriptor_form) then
+
+       ! update q(k,i)       
+
+       this % Q(i,:) = this % Q(i,:) + sol(:)
+
+       !update qDOT?
+
+    else
+
+       ! update qdot(k,i)
+
+       this % QDOT(i,:) = this % QDOT(i,:) + sol(:)
+
+       !update q
+       
+    end if
+    
+  end subroutine update_newton_state_dirk
+
+  !-----------------------------------------------------------------!    
+  ! Select type and set appropriate indices for looping  
+  !-----------------------------------------------------------------!
+
+  subroutine find_indices(this, istart, iend)
+
+    class(IRK) :: this
+    integer, intent(inout) :: istart, iend
+    logical :: found = .false.
+    integer :: i
+
+    select type (this)
+
+    type is (DIRK)
+
+       findstagenum: do i = this % num_stages, 1, -1
+
+          ! we hope to find the last non-zero time state
+          if (this % T(i) .ne. 0.0d0) then
+             istart = i
+             iend = i
+             found = .true.
+             !print *, "Current Stage:", i
+             exit findstagenum
+          end if
+
+          if (.not. found ) stop "index finding failed!"
+          
+       end do findstagenum
+
+    type is (IRK)
+
+       istart = 1
+       iend = this % num_stages
+
+    end select
+
+  end subroutine find_indices
 
   !-------------------------------------------------------------------!
   ! Computes the stage residual for the set stage state Y (comes from
@@ -483,17 +631,21 @@ contains
     class(IRK) :: this
     real(8) :: qk(:)
     integer :: i, m
+    integer :: istart, iend
     external :: F, R
+    
+    ! get the appropriate indices based on type and stage number
+    call this % find_indices(istart, iend)
 
     if (.not. this % descriptor_form) then
 
        ! compute qdot
-       do i = 1, this % num_stages
+       do i = istart, iend
           call F(this % nvars, this % T(i), this % Q(i,:), this % QDOT(i,:))
        end do
 
        ! compute the stage residuals
-       do i = 1, this % num_stages
+       do i = istart, iend
           forall(m = 1 : this % nvars)
              this % R(i,m) = this % Q(i,m) - qk(m) &
                   & - this % h * sum(this % A(i,:)*this % QDOT(:,m))
@@ -503,7 +655,7 @@ contains
     else
 
        ! compute the stage states for the guessed QDOT
-       do i = 1, this % num_stages
+       do i = istart, iend
           forall(m = 1 : this % nvars)
              this % Q(i,m) = qk(m) &
                   & + this % h*sum(this % A(i,:)*this % QDOT(:, m))
@@ -511,7 +663,7 @@ contains
        end do
 
        ! compute the stage residuals
-       do i = 1, this % num_stages
+       do i = istart, iend
           call R(this % nvars, this % T(i), this % Q(i,:), &
                & this % QDOT(i,:), this % R(i,:))
        end do
@@ -524,13 +676,55 @@ contains
   ! Computes the stage jacobian and sets into the same instance
   !          J(i,j) = [ 1 - h A(i,j) DFDQ(T(j),Y(j))]
   !-------------------------------------------------------------------!
+  
+  subroutine compute_stage_jacobian_dirk(this)
+
+    class(DIRK) :: this
+    integer :: i, j
+    external :: DFDQ, DRDQDOT
+
+    ! get the appropriate indices based on type and stage number
+    call this % find_indices(j, i)
+
+    if (.not. this % descriptor_form) then
+
+       ! get the block 
+       call DFDQ(this % nvars, this % T(j), this % Q(j,:),&
+            & this % J(i,j,:,:))
+
+       ! Combine with other terms and coeffs
+       this % J(i,j,:,:) = 1.0d0 - this % h * this % A(i,j) &
+            &* this % J(i,j,:,:)
+
+    else
+       
+       ! get the block
+       call DRDQDOT(this % nvars, this % T(j), &
+            & this % Q(j,:), this % QDOT(j,:), &
+            & this % J(i,j,:,:))
+
+       ! multiply with coeffs
+       this % J(i,j,:,:) = 1.0d0 + this % h * this % A(i,i) &
+            &* this % J(i,j,:,:)
+
+    end if
+
+  end subroutine compute_stage_jacobian_dirk
+
+  !-------------------------------------------------------------------!
+  ! Computes the stage jacobian and sets into the same instance
+  !          J(i,j) = [ 1 - h A(i,j) DFDQ(T(j),Y(j))]
+  !-------------------------------------------------------------------!
 
   subroutine compute_stage_jacobian(this)
 
     class(IRK) :: this
     integer :: i, j, loop
-
+    integer :: istart, iend
     external :: DFDQ, DRDQDOT
+
+    ! get the appropriate indices based on type and stage number
+    call this % find_indices(istart, iend)
 
     if (.not. this % descriptor_form) then
 
