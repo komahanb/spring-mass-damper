@@ -19,6 +19,7 @@
 \begin{minipage}[b]{0.5\linewidth}\centering
 \begin{tabular}{@{}lcl@{}}
 $s$   && number of stages\\
+$m$   && number of variables\\
 $h$   && time step size \\
 $i,j$ && stage indices \\
 $k$   && time index \\
@@ -36,78 +37,99 @@ $J_{ij}$  && $i,j-$th stage jacobian entry \\
 
 \section{Governing Equations in Implicit Form}
 
-\subsection{First Order Equation}
+\subsection{First Order Sysyem}
 
 \paragraph{Governing Equations:}
+Consider a system of first order differential equation in descriptor
+form
 
-Consider first order differential equation in descriptor form
-\begin{equation}
-  \mathbf{R}(t, q, \dot{q}) = 0
+\begin{equation}\label{first_order_eqn_desc}
+  \mathbf{R}(t, \mathbf{q}, \mathbf{\dot{q}}) = 0
 \end{equation}
+Here $\mathbf{q}$ is a vector of $m$ \textit{state variables} and
+consequently $\mathbf{R}$ is a system of $m$ governing equations.
 
 \paragraph{Stage Equations:}
-The key is to write Eq.~\ref{stage_explicit} in the following form
-\begin{equation}\label{stage_implicit}
-  q_{k,i} = q_{k} + h \sum_{j=1}^s a_{ij} \dot{q}_{k,j} \quad i = 1,\ldots,s 
+
+We write the stage equations in the following form
+
+\begin{equation}\label{stage_eqn_first}
+  \mathbf{q}_{k,i} = \mathbf{q}_{k} + h \sum_{j=1}^s a_{ij}
+  \mathbf{\dot{q}}_{k,j} \quad i = 1,\ldots,s
 \end{equation}
+In implicit or descriptor form, this takes the representation
+\begin{equation}\label{stage_eqn_desc}
+  \mathbf{R}\left(t_{k,i}, \mathbf{q}_{k,i}, \mathbf{\dot{q}}_{k,i}\right) = 0
+\end{equation}
+Using relation~\eqref{stage_eqn_first}
+\begin{equation}
+  \mathbf{R}\left(t_{k,i}, \mathbf{q}_k + h \sum_{j=1}^s
+  a_{ij}\mathbf{\dot{q}}_{k,j}, \mathbf{\dot{q}}_{k,i}\right) = 0
+\end{equation}
+In Eq.~\ref{stage_eqn_first} we solve for $\mathbf{\dot{q}}_{k,i}$
+values. If one uses DIRK, Eq~\ref{stage_eqn_desc} can be solved
+successively $i.e.$ stage--after--stage. In one were to use a fully
+implicit Runge Kutta, a coupled system needs to be solved, to get the
+stage values. In this work, we use prefer to use DIRK owing to its
+superiority in ease of implementation and computational savings due to
+the structure of the corresponding Butcher tableau. The solution of
+the nonlinear stage equations is described below.
+
 
 \paragraph{Newton's method:}
 
-The governing equation in descriptor form for different stages $i$ at the $k-$th time-step takes the form:
-\begin{equation}
-  \mathbf{R}\left(t_{k,i}, q_{k,i}, \dot{q}_{k,i}\right) = 0
-\end{equation}
-Using Eq.~\eqref{stage_implicit}, this becomes
-\begin{equation}
-  \mathbf{R}\left(t_{k,i}, q_k + h \sum_{j=1}^s a_{ij}\dot{q}_{k,j}, \dot{q}_{k,i}\right) = 0
-\end{equation}
-In this equation we need to solve for $\dot{q}_{k,i}$ values. We use
-Newton's method to solve for these stage derivatives. To aid the
-solution, we need the Jacobian of the governing equation.
-\begin{equation}
- \mathbf{J} \Delta\mathbf{\dot{q}} = -\mathbf{R}
-\end{equation}
-where
-\begin{equation}
-  \mathbf{J} = \pd{\mathbf{R}}{\mathbf{\dot{q}}_{i}} + h a_{ii} \pd{\mathbf{R}}{\mathbf{q}_{i}}
-\end{equation}
-This $n \times n$  system is solved for each stage for $\mathbf{\dot{q}}_i$.
+The $m \times m$ system of governing equations~\eqref{stage_eqn_first}
+are solved using Newton's method iteratively for each stage $i$.
 
-\beq
-\mathbf{J} = \pd{\mathbf{R}\left(t_{k,i},{q}_{k,i},\dot{q}_{k,i}\right)}{\dot{q}} + h a_{ii} \pd{\mathbf{R}\left(t_{k,i},{q}_{k,i},\dot{q}_{k,i}\right)}{{q}}
-\eeq
-  
+\begin{equation}
+\left[\pd{\mathbf{R}}{\mathbf{\dot{q}}} + h a_{ii}
+  \pd{\mathbf{R}}{\mathbf{q}}\right] \Delta\mathbf{\dot{q}} = -\mathbf{R}
+\end{equation}
+The Newton updates are carried out as shown below
+\begin{equation}\label{newton_update}
+  \begin{split}
+    \mathbf{\dot{q}}_{k,i}^{n+1} & = \mathbf{\dot{q}}_{k,i}^{n} +
+    \Delta\mathbf{\dot{q}}_{k,i}^{n} \\
+    \mathbf{q}_{k,i}^{n+1} & = \mathbf{q}_{k,i}^n + h a_{ii}
+    \mathbf{\dot{q}}_{k,i}^n \\
+  \end{split}
+\end{equation}
+where $n$ refers to the Newton iteration number.
 
 \paragraph{Time Marching:}
 
-Once the stage derivatives $\dot{q}_{i}$ are found, they can be used
-to find the next value of the state as follows:
+Once the stage derivatives $\mathbf{\dot{q}}_{k,j}$ are found, they can
+be used to find the next value of the state as follows
 \begin{equation}
-  q_{k+1} = q_{k} +h \sum_{j=1}^s b_i \dot{q}_{k,i}
+  \mathbf{q}_{k+1} = \mathbf{q}_{k} +h \sum_{j=1}^s b_j \mathbf{\dot{q}}_{k,j}
 \end{equation}
 
 \subsection{Second Order System}
 
 \begin{equation}
-  \mathbf{R}\left(t_{k,i}, q_{k,i}, \dot{q}_{k,i}, \ddot{q}_{k,i}\right) = 0
+  \mathbf{R}\left(t_{k,i}, \mathbf{q}_{k,i}, \mathbf{\dot{q}}_{k,i},
+  \mathbf{\ddot{q}}_{k,i}\right) = 0
+\end{equation}
+Let $\mathbf{v}=\mathbf{\dot{q}}$, therefore $\mathbf{\dot{v}}=\mathbf{\ddot{q}}$
+Therefore, the governing equations are
+\begin{equation}
+  \mathbf{R}\left(t_{k,i}, \mathbf{q}_{k,i}, \mathbf{v}_{k,i}, \mathbf{\dot{v}}_{k,i}\right) = 0
 \end{equation}
 \begin{equation}
-  q_{k,i} = q_{k} + h \sum_{j=1}^s a_{ij} \dot{q}_{k,j} \quad i = 1,\ldots,s 
+  \mathbf{q}_{k,i} = \mathbf{q}_{k} + h \sum_{j=1}^s a_{ij} \mathbf{\dot{q}}_{k,j} \quad i = 1,\ldots,s 
 \end{equation}
-Let $v=\dot{q}$, therefore $\dot{v}=\ddot{q}$
+
 \begin{equation}
-  v_{k,i} = v_{k} + h \sum_{j=1}^s a_{ij} \dot{v}_{k,j} \quad i = 1,\ldots,s 
-\end{equation}
-Therefore, the governing equations are:
-\begin{equation}
-  \mathbf{R}\left(t_{k,i}, v_{k,i}, \dot{v}_{k,i}\right) = 0
+  \mathbf{v}_{k,i} = \mathbf{v}_{k} + h \sum_{j=1}^s a_{ij} \mathbf{\dot{v}}_{k,j} \quad i = 1,\ldots,s 
 \end{equation}
 The stage equations are
 \begin{equation}
-  q_{k,i} - q_{k} - h \sum_{j=1}^s a_{ij} \dot{q}_{k,j} = 0 \quad i = 1,\ldots,s 
+  \mathbf{q}_{k,i} - \mathbf{q}_{k} - h \sum_{j=1}^s a_{ij}
+  \mathbf{\dot{q}}_{k,j} = 0 \quad i = 1,\ldots,s
 \end{equation}
 \begin{equation}
-  \dot{q}_{k,i} - v_{k} - h \sum_{j=1}^s a_{ij} \dot{v}_{k,j} = 0 \quad i = 1,\ldots,s 
+  \mathbf{{v}}_{k,i} - \mathbf{v}_{k} - h \sum_{j=1}^s a_{ij}
+  \mathbf{\dot{v}}_{k,j} = 0 \quad i = 1,\ldots,s
 \end{equation}
 
 \begin{equation}
@@ -132,7 +154,7 @@ Using the relations
   \pd{\mathbf{R}}{\mathbf{\dot{q}}_{i}} = h a_{ii} \pd{\mathbf{R}}{\mathbf{{q}}}
 \end{equation}
 \begin{equation}
-  \pd{\mathbf{R}}{\mathbf{\dot{v}}_{i}} = h a_{ii} \pd{\mathbf{R}}{\mathbf{\dot{q}}} + \pd{\mathbf{R}}{\mathbf{\ddot{q}}_{i}}
+  \pd{\mathbf{R}}{\mathbf{\dot{v}}_{i}} = \pd{\mathbf{R}}{\mathbf{\ddot{q}}_{i}} + h a_{ii} \pd{\mathbf{R}}{\mathbf{\dot{q}}} 
 \end{equation}
 
 \begin{equation}
