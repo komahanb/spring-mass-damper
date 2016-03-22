@@ -569,11 +569,11 @@ contains
 
        ! update qdot(k,i) for i-th stage
        this % QDOT(i,:) = this % QDOT(i,:) + sol(:)
-
+       
        !update q for i-th stage
-!!$       this % Q(i,:) = this % Q(i,:) &
-!!$            & + this % h * sum(this % A(i,:)*this % QDOT(i,:))
-
+       this % Q(i,:) = this % Q(i,:) &
+            & + this % h * this % A(i,i)* this % QDOT(i,:)
+       
     end if
     
   end subroutine update_newton_state_dirk
