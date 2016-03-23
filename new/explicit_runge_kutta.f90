@@ -132,11 +132,12 @@ contains
   ! Get the stage derivative array for the current step and states ERK
   !-------------------------------------------------------------------!
 
-  subroutine compute_stage_valuesERK(this, k, q)
+  subroutine compute_stage_valuesERK(this, k, q, qdot)
 
     class(ERK) :: this
     integer, intent(in) :: k 
     real(8), intent(in), dimension(:,:) :: q
+    real(8), OPTIONAL, intent(in), dimension(:,:) :: qdot
     integer :: j, m
     external :: F
     

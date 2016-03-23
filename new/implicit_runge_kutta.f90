@@ -252,11 +252,13 @@ contains
   ! IRK
   !-------------------------------------------------------------------!
 
-  subroutine compute_stage_values_irk(this, k, q)
+  subroutine compute_stage_values_irk(this, k, q, qdot)
 
     class(IRK) :: this
     integer, intent(in) :: k 
     real(8), intent(in), dimension(:,:) :: q
+    real(8), OPTIONAL, intent(in), dimension(:,:) :: qdot
+
     integer :: j
 
     ! Find the stage times
@@ -274,7 +276,7 @@ contains
     ! solve the non linear stage equations using Newton's method for
     ! the actual stage states 
 
-    call this % newton_solve(q(k-1,:))
+    call this % newton_solve(q(k-1,:), qdot(k-1,:))
 
     ! at this point Q, QDOT, T are finalized--just like ERK
 
@@ -285,11 +287,12 @@ contains
   ! DIRK
   !-------------------------------------------------------------------!
   
-  subroutine compute_stage_values_dirk(this, k, q)
+  subroutine compute_stage_values_dirk(this, k, q, qdot)
     
     class(DIRK) :: this
     integer, intent(in) :: k 
     real(8), intent(in), dimension(:,:) :: q
+    real(8), OPTIONAL, intent(in), dimension(:,:) :: qdot
     integer :: j
 
     do j = 1, this % num_stages
@@ -301,15 +304,22 @@ contains
        ! Guess the solution for stage states
 
        if (.not. this % descriptor_form) then
+          ! guess q
           this % Q(j,:) = 1.0d0
        else 
-          this % QDOT(j,:) = 1.0d0 
+          if (this % second_order) then
+             ! guess qdot
+             this % QDOT(j,:) = 1.0d0 
+          else
+             ! guess qddot
+             this % QDDOT(j,:) = 1.0d0 
+          end if
        end if
 
        ! solve the non linear stage equations using Newton's method for
        ! the actual stage states 
 
-       call this % newton_solve(q(k-1,:))
+       call this % newton_solve(q(k-1,:), qdot(k-1,:))
 
     end do
 
@@ -326,13 +336,13 @@ contains
   ! that are solved using Newton's method at each time step
   ! -------------------------------------------------------------------!
 
-  subroutine newton_solve(this, qk)
+  subroutine newton_solve(this, qk, qdotk)
 
     class(IRK) :: this
-    real(8), intent(in) :: qk(:)
-    real(8), allocatable, dimension(:) :: res, dq
+    real(8), intent(in), dimension(:)    :: qk, qdotk
+    real(8), allocatable, dimension(:)   :: res, dq
     real(8), allocatable, dimension(:,:) :: jac
-    integer, allocatable, dimension(:) :: ipiv
+    integer, allocatable, dimension(:)   :: ipiv
     integer :: n, info, size
     logical :: conv = .false.
     
@@ -352,7 +362,7 @@ contains
     newton: do n = 1, this % max_newton
        
        ! Get the residual of the function
-       call this % get_residual(qk)
+       call this % get_residual(qk, qdotk)
        this % fcnt = this % fcnt + 1
        
        ! Get the jacobian matrix
@@ -589,7 +599,7 @@ contains
           ! update q for i-th stage
           this % Q(i,:) = this % Q(i,:) &
                & + this % h * this % A(i,i)* this % QDOT(i,:)
-          
+
        end if
        
     end if
@@ -643,10 +653,10 @@ contains
   !
   !-------------------------------------------------------------------!
 
-  subroutine get_residual(this, qk)
+  subroutine get_residual(this, qk, qdotk)
 
     class(IRK) :: this
-    real(8) :: qk(:)
+    real(8), intent(in), dimension(:) :: qk, qdotk
     integer :: i, m
     integer :: istart, iend
     external :: F, R
@@ -668,22 +678,53 @@ contains
                   & - this % h * sum(this % A(i,:)*this % QDOT(:,m))
           end forall
        end do
-
+       
     else
+       
+       if (this % second_order) then
+          
+          ! compute the stage states for the guessed QDDOT
+          do i = istart, iend
+             forall(m = 1 : this % nvars)
+                this % Q(i,m) = qk(m) &
+                     & + this % h*sum(this % A(i,:)*this % QDOT(:, m))
+             end forall
+          end do
 
-       ! compute the stage states for the guessed QDOT
-       do i = istart, iend
-          forall(m = 1 : this % nvars)
-             this % Q(i,m) = qk(m) &
-                  & + this % h*sum(this % A(i,:)*this % QDOT(:, m))
-          end forall
-       end do
+          ! compute the stage velocities for the guessed QDDOT
+          do i = istart, iend
+             forall(m = 1 : this % nvars)
+                this % QDOT(i,m) = qdotk(m) &
+                     & + this % h*sum(this % A(i,:)*this % QDDOT(:, m))
+             end forall
+          end do
 
-       ! compute the stage residuals
-       do i = istart, iend
-          call R(this % nvars, this % T(i), this % Q(i,:), &
-               & this % QDOT(i,:), this % R(i,:))
-       end do
+          stop "fix function calls"
+
+          ! compute the stage residuals for Q, QDOT, QDDOT
+!!$          do i = istart, iend
+!!$             call R(this % nvars, this % T(i), this % Q(i,:), &
+!!$                  & this % QDOT(i,:), this % R(i,:))
+!!$          end do
+
+
+       else 
+
+          ! compute the stage states for the guessed QDOT
+          do i = istart, iend
+             forall(m = 1 : this % nvars)
+                this % Q(i,m) = qk(m) &
+                     & + this % h*sum(this % A(i,:)*this % QDOT(:, m))
+             end forall
+          end do
+
+          ! compute the stage residuals
+          do i = istart, iend
+             call R(this % nvars, this % T(i), this % Q(i,:), &
+                  & this % QDOT(i,:), this % R(i,:))
+          end do
+
+       end if
 
     end if
 

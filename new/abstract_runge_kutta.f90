@@ -78,11 +78,12 @@ module abstract_runge_kutta
      ! Interface for finding the stage derivatives at each time step
      !----------------------------------------------------------------!
 
-     subroutine compute_stage_values_interface(this, k, q)
+     subroutine compute_stage_values_interface(this, k, q, qdot)
        import RK
        class(RK) :: this
        integer, intent(in) :: k 
        real(8), intent(in), dimension(:,:) :: q
+       real(8), OPTIONAL, intent(in), dimension(:,:) :: qdot
      end subroutine compute_stage_values_interface
 
      !----------------------------------------------------------------!
