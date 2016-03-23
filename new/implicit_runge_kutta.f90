@@ -31,10 +31,10 @@ module implicit_runge_kutta
 
      ! Routines that are common to IRK and its subtypes
      procedure :: newton_solve
-     procedure :: update_newton_state
+     procedure :: state_update
      procedure :: setup_linear_system
-     procedure :: compute_stage_residual
-     procedure :: compute_stage_jacobian
+     procedure :: get_residual
+     procedure :: get_jacobian
      procedure :: find_indices
 
   end type IRK
@@ -53,8 +53,8 @@ module implicit_runge_kutta
      procedure :: setup_butcher_tableau => ButcherDIRK
      procedure :: compute_stage_values => compute_stage_values_dirk
      procedure :: setup_linear_system => setup_linear_system_dirk
-     procedure :: compute_stage_jacobian => compute_stage_jacobian_dirk
-     procedure :: update_newton_state => update_newton_state_dirk
+     procedure :: get_jacobian => get_jacobian_dirk
+     procedure :: state_update => state_update_dirk
      procedure :: check_jacobian
 
   end type DIRK
@@ -352,11 +352,11 @@ contains
     newton: do n = 1, this % max_newton
        
        ! Get the residual of the function
-       call this % compute_stage_residual(qk)
+       call this % get_residual(qk)
        this % fcnt = this % fcnt + 1
        
        ! Get the jacobian matrix
-       call this % compute_stage_jacobian()
+       call this % get_jacobian()
        this % fgcnt = this % fgcnt + 1
        
        ! setup linear system in lapack format
@@ -379,7 +379,7 @@ contains
        end if
 
        ! update the solution
-       call this % update_newton_state(dq)
+       call this % state_update(dq)
 
     end do newton
 
@@ -494,7 +494,7 @@ contains
   ! this call
   ! -------------------------------------------------------------------!
 
-  subroutine update_newton_state(this, sol)
+  subroutine state_update(this, sol)
 
     implicit none
 
@@ -541,14 +541,14 @@ contains
        
     end if
 
-  end subroutine update_newton_state
+  end subroutine state_update
 
   !-------------------------------------------------------------------!
   ! After the solution of stage equations, we update the states using
   ! this call
   ! -------------------------------------------------------------------!
 
-  subroutine update_newton_state_dirk(this, sol)
+  subroutine state_update_dirk(this, sol)
 
     implicit none
 
@@ -576,7 +576,7 @@ contains
        
     end if
     
-  end subroutine update_newton_state_dirk
+  end subroutine state_update_dirk
 
   !-----------------------------------------------------------------!    
   ! Select type and set appropriate indices for looping  
@@ -625,7 +625,7 @@ contains
   !
   !-------------------------------------------------------------------!
 
-  subroutine compute_stage_residual(this, qk)
+  subroutine get_residual(this, qk)
 
     class(IRK) :: this
     real(8) :: qk(:)
@@ -669,14 +669,14 @@ contains
 
     end if
 
-  end subroutine compute_stage_residual
+  end subroutine get_residual
 
   !-------------------------------------------------------------------!
   ! Computes the stage jacobian and sets into the same instance
   !          J(i,j) = [ 1 - h A(i,j) DFDQ(T(j),Y(j))]
   !-------------------------------------------------------------------!
   
-  subroutine compute_stage_jacobian_dirk(this)
+  subroutine get_jacobian_dirk(this)
 
     class(DIRK) :: this
     integer :: i, j
@@ -723,14 +723,14 @@ contains
     ! check with FD
     call this % check_jacobian(i, this % J(i,j,:,:))
 
-  end subroutine compute_stage_jacobian_dirk
+  end subroutine get_jacobian_dirk
 
   !-------------------------------------------------------------------!
   ! Computes the stage jacobian and sets into the same instance
   !          J(i,j) = [ 1 - h A(i,j) DFDQ(T(j),Y(j))]
   !-------------------------------------------------------------------!
 
-  subroutine compute_stage_jacobian(this)
+  subroutine get_jacobian(this)
 
     class(IRK) :: this
     integer :: i, j
@@ -820,7 +820,7 @@ contains
 
     end if
 
-  end subroutine compute_stage_jacobian
+  end subroutine get_jacobian
 
   !-------------------------------------------------------------------!  
   ! Routine to sanity check the jacobian of the governing equations
