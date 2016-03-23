@@ -144,7 +144,7 @@ end subroutine DFDQDOT
 ! Function in Implicit form R(t, q, qot) = 0 
 !-------------------------------------------------------------------!
 
-subroutine R(nvars, time, q, qdot, res)
+subroutine R(res, nvars, time, q, qdot)
 
   implicit none
 
@@ -176,7 +176,7 @@ end subroutine R
 ! DRDQ of the function
 !---------------------------------------------------------------------!
 
-subroutine DRDQ(nvars, time, q, qdot, J)
+subroutine DRDQ(J, nvars, time, q, qdot)
 
   implicit none
 
@@ -242,7 +242,7 @@ end subroutine DRDQ
 ! DRDQDOT of the function
 !---------------------------------------------------------------------!
 
-subroutine DRDQDOT(nvars, time, q, qdot, J)
+subroutine DRDQDOT(J, nvars, time, q, qdot)
 
   implicit none
 
@@ -295,3 +295,12 @@ subroutine DRDQDOT(nvars, time, q, qdot, J)
   end if
 
 end subroutine DRDQDOT
+
+
+
+
+
+
+
+
+

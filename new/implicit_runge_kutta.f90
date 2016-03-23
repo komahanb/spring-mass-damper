@@ -720,8 +720,8 @@ contains
 
           ! compute the stage residuals
           do i = istart, iend
-             call R(this % nvars, this % T(i), this % Q(i,:), &
-                  & this % QDOT(i,:), this % R(i,:))
+             call R(this % R(i,:), this % nvars, this % T(i), this % Q(i,:), &
+                  & this % QDOT(i,:))
           end do
 
        end if
@@ -764,18 +764,16 @@ contains
     else
        
        ! get the q block
-       call DRDQ(this % nvars, this % T(j), &
-            & this % Q(j,:), this % QDOT(j,:), &
-            & this % J(i,j,:,:))
+       call DRDQ(this % J(i,j,:,:), this % nvars, this % T(j), &
+            & this % Q(j,:), this % QDOT(j,:))
 
        ! multiply with coeffs
        this % J(i,j,:,:) = this % h * this % A(i,i) &
             &* this % J(i,j,:,:)
 
        ! get the qdot block
-       call DRDQDOT(this % nvars, this % T(j), &
-            & this % Q(j,:), this % QDOT(j,:), &
-            & this % J(i,j,:,:))
+       call DRDQDOT(this % J(i,j,:,:), this % nvars, this % T(j), &
+            & this % Q(j,:), this % QDOT(j,:))
 
     end if
     
@@ -846,9 +844,8 @@ contains
 
                 ! compute the diagonal entry
 
-                call DRDQDOT(this % nvars, this % T(j), &
-                     & this % Q(j,:), this % QDOT(j,:), &
-                     & this % J(i,j,:,:))
+                call DRDQDOT(this % J(i,j,:,:), this % nvars, this % T(j), &
+                     & this % Q(j,:), this % QDOT(j,:))
 
                 ! multiply with coeffs
                 this % J(i,j,:,:) = 1.0d0 + this % h * this % A(i,i) &
@@ -860,11 +857,10 @@ contains
 
                 ! compute only when the coeff is nonzero
                 if (this % A(i,j) .ne. 0.0d0) then
-
-                   call DRDQDOT(this % nvars, this % T(j), &
-                        & this % Q(j,:), this % QDOT(j,:), &
-                        & this % J(i,j,:,:))
-
+                   
+                   call DRDQDOT(this % J(i,j,:,:), this % nvars, this % T(j), &
+                        & this % Q(j,:), this % QDOT(j,:))
+                   
                    ! multiply with coeffs
                    this % J(i,j,:,:) = this % h * this % A(i,j) &
                         &* this % J(i,j,:,:)
@@ -948,9 +944,9 @@ contains
        end do
 
     else
-
-       call R(this % nvars, this % T(i), this % Q(i,:), &
-            & this % QDOT(i,:), tmp2)
+       
+       call R(tmp2, this % nvars, this % T(i), this % Q(i,:), &
+            & this % QDOT(i,:))
        
        !--------------------------------------------------------------!
        ! Derivative of R WRT Q
@@ -963,7 +959,7 @@ contains
           ! perturb the k-th variable
           qtmp(k) = this % Q(i,k) + small
 
-          call R(this % nvars, this % T(i), qtmp, this % QDOT(i,:), tmp1)
+          call R(tmp1, this % nvars, this % T(i), qtmp, this % QDOT(i,:))
 
           ! unperturb the k-th variable
           qtmp(k) = this % Q(i,k)
@@ -986,8 +982,8 @@ contains
           ! perturb the k-th variable
           qdottmp(k) = this % Qdot(i,k) + small
 
-          call R(this % nvars, this % T(i), this % Q(i,:), &
-               & qdottmp, tmp1)
+          call R(tmp1, this % nvars, this % T(i), this % Q(i,:), &
+               & qdottmp)
 
           ! unperturb the k-th variable
           qdottmp(k) = this % Qdot(i,k)
@@ -1015,6 +1011,8 @@ contains
   end subroutine check_jacobian
 
 end module implicit_runge_kutta
+
+
 
 
 
