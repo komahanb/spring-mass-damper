@@ -567,12 +567,30 @@ contains
 
     else
 
-       ! update qdot(k,i) for i-th stage
-       this % QDOT(i,:) = this % QDOT(i,:) + sol(:)
-       
-       !update q for i-th stage
-       this % Q(i,:) = this % Q(i,:) &
-            & + this % h * this % A(i,i)* this % QDOT(i,:)
+       if (this % second_order) then
+
+          ! update qddot          
+          this % QDDOT(i,:) = this % QDDOT(i,:) + sol(:)
+          
+          ! update qdot
+          this % QDOT(i,:) = this % QDOT(i,:) &
+               & + this % h * this % A(i,i) * this % QDDOT(i,:)
+
+          ! update q
+          this % Q(i,:) = this % Q(i,:) &
+               & + this % h * this % A(i,i) * this % h * this % A(i,i) &
+               & * this % QDDOT(i,:)
+
+       else
+          
+          ! update qdot(k,i) for i-th stage
+          this % QDOT(i,:) = this % QDOT(i,:) + sol(:)
+          
+          ! update q for i-th stage
+          this % Q(i,:) = this % Q(i,:) &
+               & + this % h * this % A(i,i)* this % QDOT(i,:)
+          
+       end if
        
     end if
     
