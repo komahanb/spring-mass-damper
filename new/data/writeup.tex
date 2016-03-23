@@ -215,7 +215,10 @@ where $n$ refers to the Newton iteration number.
 \paragraph{Time marching:}
 We march in time using the following relation
 \begin{equation}
-  \mathbf{q}_{k+1} = \mathbf{q}_{k} +h \sum_{j=1}^s b_j \mathbf{\dot{q}}_{k,j}
+  \begin{split}
+  \mathbf{q}_{k+1} = \mathbf{q}_{k} +h \sum_{j=1}^s b_j \mathbf{\dot{q}}_{k,j} \\
+  \mathbf{\dot{q}}_{k+1} = \mathbf{\dot{q}}_{k} +h \sum_{j=1}^s b_j \mathbf{\ddot{q}}_{k,j} \\
+  \end{split}
 \end{equation}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
