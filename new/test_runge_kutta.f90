@@ -82,7 +82,7 @@ program main
      ERKOBJ % descriptor_form = descriptor
 
      call ERKOBJ % initialize(nvars=M,h=h,tinit=tinit,num_stages=kk)
-     call ERKOBJ % integrate(q(kk,:,:), qdot(kk,:,:), N)
+     call ERKOBJ % integrate(N, q(kk,:,:), qdot(kk,:,:))
      call ERKOBJ % finalize()
      
      ! Find the error
@@ -130,7 +130,7 @@ program main
         IRKOBJ % descriptor_form = descriptor
 
         call IRKOBJ  % initialize(nvars=M,h=h,tinit=tinit,num_stages=kk)
-        call IRKOBJ  % integrate(q(kk,:,:), qdot(kk,:,:), N)
+        call IRKOBJ  % integrate(N, q(kk,:,:), qdot(kk,:,:))
         call IRKOBJ  % finalize()
 
         ! Find the error
@@ -178,7 +178,7 @@ program main
      DIRKOBJ % descriptor_form = descriptor
      
      call DIRKOBJ % initialize(nvars=M,h=h,tinit=tinit,num_stages=kk)
-     call DIRKOBJ % integrate(q(kk,:,:), qdot(kk,:,:), N)
+     call DIRKOBJ % integrate(N, q(kk,:,:), qdot(kk,:,:))
      call DIRKOBJ % finalize()
      
      ! Find the error

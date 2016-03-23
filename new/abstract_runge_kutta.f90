@@ -5,8 +5,6 @@
 !
 ! o User needs to provide the implementation for the function 'f' in
 !   the module
-! 
-! o Yet to implement the multivariate case
 !=====================================================================!
 ! Author: Komahan Boopathy (komahan@gatech.edu)
 !=====================================================================!
@@ -284,7 +282,7 @@ contains
   ! o q, qdot arrays are modified by the routine
   !-------------------------------------------------------------------!
 
-  subroutine Integrate(this, q, qdot, N)
+  subroutine Integrate(this, N, q, qdot)
 
     class(RK) :: this
     real(8), intent(inout), dimension(:,:) :: q, qdot !q(time, var)
@@ -317,7 +315,7 @@ contains
 
     class(RK) :: this
     integer, intent(in) :: k ! current time step
-    real(8),  dimension(:,:) :: q, qdot ! actual states
+    real(8),  dimension(:,:) :: q, qdot ! current state
     integer :: m
 
     ! update q for all m variables
