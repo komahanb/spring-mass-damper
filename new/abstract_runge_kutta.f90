@@ -26,9 +26,12 @@ module abstract_runge_kutta
      integer :: num_stages = 1  ! default number of stages
      integer :: order           ! order of accuracy
      integer :: nvars = 1       ! number of states/equations
+
      real(8) :: h = 0.1d0       ! default step size (will reconsider when implementing adaptive step size)
      real(8) :: time            ! scalar to track integration time
      
+     logical :: second_order = .false.
+
      ! The Butcher Tableau 
      real(8), dimension(:,:), allocatable :: A ! forms the coeff matrix
      real(8), dimension(:), allocatable :: B ! multiplies the state derivatives
@@ -317,12 +320,20 @@ contains
     integer, intent(in) :: k ! current time step
     real(8),  dimension(:,:) :: q, qdot ! current state
     integer :: m
-
-    ! update q for all m variables
+    
+    ! march q to next time step
     forall(m=1:this%nvars)
        q(k,m) = q(k-1,m) + this % h*sum(this % B(1:this%num_stages) &
             &* this % QDOT(1:this%num_stages,m))
     end forall
+
+    ! march qdot to next time step for second order system
+    if (this % second_order) then
+       forall(m=1:this%nvars)
+          qdot(k,m) = qdot(k-1,m) + this % h*sum(this % B(1:this%num_stages) &
+               &* this % QDDOT(1:this%num_stages,m))
+       end forall
+    end if
     
     ! increment the time
     this % time = this % time + this % h
