@@ -33,15 +33,16 @@ module abstract_runge_kutta
      
      ! The Butcher Tableau 
      real(8), dimension(:,:), allocatable :: A ! forms the coeff matrix
-     real(8), dimension(:)  , allocatable :: B ! multiplies the state derivatives
-     real(8), dimension(:)  , allocatable :: C ! multiplies the time
+     real(8), dimension(:), allocatable :: B ! multiplies the state derivatives
+     real(8), dimension(:), allocatable :: C ! multiplies the time
 
      ! The stage time and its corresponding derivatives
-     real(8), dimension(:)  , allocatable :: T ! the corresponding stage time
-     real(8), dimension(:,:)  , allocatable :: Q ! the corresponding state
-     real(8), dimension(:,:)  , allocatable :: QDOT ! the stage derivatives K = F(T,Q)
+     real(8), dimension(:), allocatable :: T ! the corresponding stage time
+     real(8), dimension(:,:), allocatable :: Q ! the corresponding state
+     real(8), dimension(:,:), allocatable :: QDOT ! the stage derivatives K = F(T,Q)
+     real(8), dimension(:,:), allocatable :: QDDOT ! the stage derivatives K = F(T,Q)
 
-     real(8), dimension(:,:)  , allocatable :: R ! stage residual
+     real(8), dimension(:,:), allocatable :: R ! stage residual
      real(8), dimension(:,:,:,:), allocatable :: J ! stage jacobian
      
      ! The form of the governing equation
@@ -56,7 +57,7 @@ module abstract_runge_kutta
      procedure :: initialize, finalize, integrate
      
      ! Implemented procedures (not callable by the user)
-     procedure, private :: update_states
+     procedure, private :: time_march
      procedure, private :: reset_stage_values
      procedure, private :: check_butcher_tableau
 
@@ -172,9 +173,16 @@ contains
     !-----------------------------------------------------------------!
     ! allocate space for the stage derivatives
     !-----------------------------------------------------------------!
-
+    
     allocate(this % QDOT(this % num_stages, this % nvars))
     this % QDOT = 0.0d0
+
+    !-----------------------------------------------------------------!
+    ! allocate space for the second stage derivatives
+    !-----------------------------------------------------------------!
+
+    allocate(this % QDDOT(this % num_stages, this % nvars))
+    this % QDDOT = 0.0d0
 
     !-----------------------------------------------------------------!
     ! allocate space for the stage time
@@ -252,10 +260,11 @@ contains
     if(allocated(this % B)) deallocate(this % B)
     if(allocated(this % C)) deallocate(this % C)
 
-    ! clear stage values
+    ! clear stage value
+    if(allocated(this % QDDOT)) deallocate(this % QDDOT)
     if(allocated(this % QDOT)) deallocate(this % QDOT)
-    if(allocated(this % T)) deallocate(this % T)
     if(allocated(this % Q)) deallocate(this % Q)
+    if(allocated(this % T)) deallocate(this % T)
 
     ! clear the stage residual and jacobian
     if(allocated(this % R)) deallocate(this % R)
@@ -289,7 +298,7 @@ contains
        call this % compute_stage_values(k, q)
 
        ! advance the state to the current step
-       call this % update_states(k, q, qdot)
+       call this % time_march(k, q, qdot)
 
        ! set the stage values to zero
        call this % reset_stage_values()
@@ -302,7 +311,7 @@ contains
   ! Update the states based on RK Formulae
   !-------------------------------------------------------------------!
 
-  subroutine update_states(this, k, q, qdot)
+  subroutine time_march(this, k, q, qdot)
 
     implicit none
 
@@ -320,7 +329,7 @@ contains
     ! increment the time
     this % time = this % time + this % h
 
-  end subroutine update_states
+  end subroutine time_march
 
   !-------------------------------------------------------------------!
   ! Reset the array to store new stage values at each time step
