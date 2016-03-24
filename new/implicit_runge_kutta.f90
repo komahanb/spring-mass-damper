@@ -683,19 +683,19 @@ contains
        
        if (this % second_order) then
           
-          ! compute the stage states for the guessed QDDOT
-          do i = istart, iend
-             forall(m = 1 : this % nvars)
-                this % Q(i,m) = qk(m) &
-                     & + this % h*sum(this % A(i,:)*this % QDOT(:, m))
-             end forall
-          end do
-
           ! compute the stage velocities for the guessed QDDOT
           do i = istart, iend
              forall(m = 1 : this % nvars)
                 this % QDOT(i,m) = qdotk(m) &
                      & + this % h*sum(this % A(i,:)*this % QDDOT(:, m))
+             end forall
+          end do
+
+          ! compute the stage states for the guessed QDDOT
+          do i = istart, iend
+             forall(m = 1 : this % nvars)
+                this % Q(i,m) = qk(m) &
+                     & + this % h*sum(this % A(i,:)*this % QDOT(:, m))
              end forall
           end do
 
