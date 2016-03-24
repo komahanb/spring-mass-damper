@@ -154,7 +154,8 @@ program main
 
   if (M .eq. 1) then
 
-     q(:,1,1) = 0.0d0
+     q(:,1,1) = 1.0d0
+     qdot(:,1,1) = 0.0d0
 
   else if (M .eq. 2) then
      
