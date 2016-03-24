@@ -297,7 +297,7 @@ contains
     march: do k = 2, N + 1
        
        ! find the stage derivatives at the current step
-       call this % compute_stage_values(k, q)
+       call this % compute_stage_values(k, q, qdot)
 
        ! advance the state to the current step
        call this % time_march(k, q, qdot)
