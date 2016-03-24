@@ -308,11 +308,11 @@ contains
           this % Q(j,:) = 1.0d0
        else 
           if (this % second_order) then
-             ! guess qdot
-             this % QDOT(j,:) = 1.0d0 
-          else
              ! guess qddot
              this % QDDOT(j,:) = 1.0d0 
+          else
+             ! guess qdot
+             this % QDOT(j,:) = 1.0d0 
           end if
        end if
 
@@ -599,7 +599,7 @@ contains
           ! update q for i-th stage
           this % Q(i,:) = this % Q(i,:) &
                & + this % h * this % A(i,i)* this % QDOT(i,:)
-
+          
        end if
        
     end if
