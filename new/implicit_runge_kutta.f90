@@ -912,13 +912,14 @@ contains
     integer, intent(in) :: i
     real(8), intent(inout) :: exact_jac(:,:)
 
-    real(8), allocatable, dimension(:) :: tmp1, tmp2, qtmp, qdottmp
-    real(8), allocatable, dimension(:,:) :: jtmp1, jtmp2, jtmp
+    real(8), allocatable, dimension(:) :: tmp1, tmp2, qtmp, qdottmp, qddottmp
+    real(8), allocatable, dimension(:,:) :: jtmp1, jtmp2, jtmp, jtmp3
     real(8) :: small = 1.0d-6
     integer :: k
 
     allocate(qtmp(this % nvars)); qtmp = 0.0d0;
     allocate(qdottmp(this % nvars)); qdottmp = 0.0d0;
+    allocate(qddottmp(this % nvars)); qddottmp = 0.0d0;
 
     allocate(tmp1(this % nvars)); tmp1 = 0.0d0;
     allocate(tmp2(this % nvars)); tmp2 = 0.0d0;
@@ -926,7 +927,7 @@ contains
     allocate(jtmp (this % nvars, this % nvars)); jtmp = 0.0d0;
     allocate(jtmp1(this % nvars, this % nvars)); jtmp1 = 0.0d0;
     allocate(jtmp2(this % nvars, this % nvars)); jtmp2 = 0.0d0;
-    
+    allocate(jtmp3(this % nvars, this % nvars)); jtmp3 = 0.0d0;
     
     if (.not. this % descriptor_form) then
 
@@ -966,16 +967,91 @@ contains
        do k = 1, this % nvars
           jtmp2(k,k) = 1.0d0
        end do
+       
+       jtmp = jtmp2 + jtmp1 
 
     else
-
-
+       
        if (this % second_order) then
 
-          stop "second order jacobian FD"
-          
+          ! original function call
+
+          call R(tmp2, this % nvars, this % T(i), this % Q(i,:), &
+               & this % QDOT(i,:), this % QDDOT(i,:))
+
+          !-----------------------------------------------------------!
+          ! Derivative of R WRT Q
+          !-----------------------------------------------------------!
+
+          qtmp(:) = this % Q(i,:)
+
+          loop_vars: do k = 1, this % nvars
+
+             ! perturb the k-th variable
+             qtmp(k) = this % Q(i,k) + small
+
+             call R(tmp1, this % nvars, this % T(i), qtmp, &
+                  & this % QDOT(i,:), this % QDDOT(i,:))
+
+             ! unperturb the k-th variable
+             qtmp(k) = this % Q(i,k)
+
+             ! approximate the jacobian with respect to the k-th variable
+             jtmp1(:,k) = (tmp1-tmp2)/small
+
+          end do loop_vars
+
+          jtmp1 =  this % h * this % A(i,i) * this % h * this % A(i,i) * jtmp1
+
+          !-----------------------------------------------------------!
+          ! Derivative of R WRT QDOT
+          !-----------------------------------------------------------!
+
+          qdottmp(:) = this % QDOT(i,:)
+
+          do k = 1, this % nvars
+
+             ! perturb the k-th variable
+             qdottmp(k) = this % QDOT(i,k) + small
+
+             call R(tmp1, this % nvars, this % T(i), this % Q(i,:), &
+                  & qdottmp)
+
+             ! unperturb the k-th variable
+             qdottmp(k) = this % QDOT(i,k)
+
+             jtmp2(:,k) = (tmp1-tmp2)/small
+
+          end do
+
+          jtmp2 =  this % h * this % A(i,i) * jtmp2
+
+          !-----------------------------------------------------------!
+          ! Derivative of R WRT QDDOT
+          !-----------------------------------------------------------!
+
+          qddottmp(:) = this % QDDOT(i,:)
+
+          do k = 1, this % nvars
+
+             ! perturb the k-th variable
+             qddottmp(k) = this % QDDOT(i,k) + small
+
+             call R(tmp1, this % nvars, this % T(i), this % Q(i,:), &
+                  & this % QDOT(i,:), qddottmp)
+
+             ! unperturb the k-th variable
+             qddottmp(k) = this % QDDOT(i,k)
+
+             jtmp3(:,k) = (tmp1-tmp2)/small
+
+          end do
+
+          jtmp = jtmp3 + jtmp2 + jtmp1 
 
        else
+
+          ! original function call
 
           call R(tmp2, this % nvars, this % T(i), this % Q(i,:), &
                & this % QDOT(i,:))
@@ -987,7 +1063,7 @@ contains
           qtmp(:) = this % Q(i,:)
 
           loopvars: do k = 1, this % nvars
-             
+
              ! perturb the k-th variable
              qtmp(k) = this % Q(i,k) + small
 
@@ -1024,13 +1100,12 @@ contains
 
           end do
 
-       end if
+          ! sum the jacobian components to get the total derivative
+          jtmp = jtmp2 + jtmp1 
 
-    end if
+       end if ! first or second order
 
-    ! sum the jacobian components to get the total derivative
-    jtmp = jtmp2 + jtmp1
-
+    end if ! descriptor  or explicit
 
     if (maxval(abs(exact_jac - jtmp)) .gt. small) then
        print *, "WARNING: Possible error in jacobian", &

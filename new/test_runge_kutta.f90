@@ -11,12 +11,12 @@ program main
 
   integer :: i, kk
 
-  integer, parameter :: M = 3
+  integer, parameter :: M = 1
   real(8), parameter :: h =  0.05d0
   real(8), parameter :: tinit = 0.0d0
-  real(8), parameter :: tfinal = 5.0d0
+  real(8), parameter :: tfinal = 1.0d0
 
-  real(8), allocatable, dimension(:,:,:) :: q, qdot
+  real(8), allocatable, dimension(:,:,:) :: q, qdot, qddot
 
   integer :: nargs, j, N
 
@@ -47,6 +47,7 @@ program main
 
   allocate(q(4, N+1,M))
   allocate(qdot(4, N+1,M))
+  allocate(qddot(4, N+1,M))
   
   !-------------------------------------------------------------------!
   ! Explicit Runge Kutta
@@ -97,58 +98,58 @@ program main
   !-------------------------------------------------------------------!
   ! Implicit Runge Kutta
   !-------------------------------------------------------------------!
-  
-  if (M .eq. 1) then
-
-     q = 0.0d0
-     qdot = 0.0d0
-
-     if (M .eq. 1) then
-
-        q(:,1,1) = 0.0d0
-
-     else if (M .eq. 2) then
-
-        q(:,1,1) = 0.0d0
-        q(:,1,2) = 1.0d0
-
-     else if (M .eq. 3) then
-
-        q(:,1,1) = 1.0d0
-        q(:,1,2) = 2.0d0
-        q(:,1,3) = 3.0d0
-
-     end if
-
-     do kk = 1, 3
-
-        if (kk.eq.1) open(unit=90, file='irk1.dat')
-        if (kk.eq.2) open(unit=90, file='irk2.dat')
-        if (kk.eq.3) open(unit=90, file='irk3.dat')
-
-        ! Test for each RK 
-        IRKOBJ % descriptor_form = descriptor
-
-        call IRKOBJ  % initialize(nvars=M,h=h,tinit=tinit,num_stages=kk)
-        call IRKOBJ  % integrate(N, q(kk,:,:), qdot(kk,:,:))
-        call IRKOBJ  % finalize()
-
-        ! Find the error
-        do i = 1, N + 1
-           write(90, *)  tinit + dble(i-1)*h, (q(kk,i,j),j=1,M)
-        end do
-
-        close(90)
-
-     end do
-
-  end if
+!!$  
+!!$  if (M .eq. 1) then
+!!$
+!!$     q = 0.0d0
+!!$     qdot = 0.0d0
+!!$
+!!$     if (M .eq. 1) then
+!!$
+!!$        q(:,1,1) = 0.0d0
+!!$
+!!$     else if (M .eq. 2) then
+!!$
+!!$        q(:,1,1) = 0.0d0
+!!$        q(:,1,2) = 1.0d0
+!!$
+!!$     else if (M .eq. 3) then
+!!$
+!!$        q(:,1,1) = 1.0d0
+!!$        q(:,1,2) = 2.0d0
+!!$        q(:,1,3) = 3.0d0
+!!$
+!!$     end if
+!!$
+!!$     do kk = 1, 3
+!!$
+!!$        if (kk.eq.1) open(unit=90, file='irk1.dat')
+!!$        if (kk.eq.2) open(unit=90, file='irk2.dat')
+!!$        if (kk.eq.3) open(unit=90, file='irk3.dat')
+!!$
+!!$        ! Test for each RK 
+!!$        IRKOBJ % descriptor_form = descriptor
+!!$
+!!$        call IRKOBJ  % initialize(nvars=M,h=h,tinit=tinit,num_stages=kk)
+!!$        call IRKOBJ  % integrate(N, q(kk,:,:), qdot(kk,:,:))
+!!$        call IRKOBJ  % finalize()
+!!$
+!!$        ! Find the error
+!!$        do i = 1, N + 1
+!!$           write(90, *)  tinit + dble(i-1)*h, (q(kk,i,j),j=1,M)
+!!$        end do
+!!$
+!!$        close(90)
+!!$
+!!$     end do
+!!$
+!!$  end if
 
   !-------------------------------------------------------------------!
   ! Diagonally Implicit Runge Kutta
   !-------------------------------------------------------------------!
   
-  q = 0.0d0
+  q = 1.0d0
   qdot = 0.0d0
 
   if (M .eq. 1) then
@@ -156,7 +157,7 @@ program main
      q(:,1,1) = 0.0d0
 
   else if (M .eq. 2) then
-
+     
      q(:,1,1) = 0.0d0
      q(:,1,2) = 1.0d0
 
@@ -169,26 +170,30 @@ program main
   end if
 
   do kk = 1, 3
-     
+
      if (kk.eq.1) open(unit=90, file='dirk1.dat')
      if (kk.eq.2) open(unit=90, file='dirk2.dat')
      if (kk.eq.3) open(unit=90, file='dirk3.dat')
-     
+
      ! Test for each RK 
      DIRKOBJ % descriptor_form = descriptor
      
+     DIRKOBJ % second_order = .true.
+
      call DIRKOBJ % initialize(nvars=M,h=h,tinit=tinit,num_stages=kk)
      call DIRKOBJ % integrate(N, q(kk,:,:), qdot(kk,:,:))
      call DIRKOBJ % finalize()
-     
+
      ! Find the error
      do i = 1, N + 1
         write(90, *)  tinit + dble(i-1)*h, (q(kk,i,j),j=1,M)
      end do
 
-  close(90)
+     close(90)
 
   end do
+  
+  deallocate(q,qdot,qddot)
   
 contains
 
