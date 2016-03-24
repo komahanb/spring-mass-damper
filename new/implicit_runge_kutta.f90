@@ -699,14 +699,11 @@ contains
              end forall
           end do
 
-          stop "fix function calls"
-
           ! compute the stage residuals for Q, QDOT, QDDOT
-!!$          do i = istart, iend
-!!$             call R(this % nvars, this % T(i), this % Q(i,:), &
-!!$                  & this % QDOT(i,:), this % R(i,:))
-!!$          end do
-
+          do i = istart, iend
+             call R(this % R(i,:), this % nvars, this % T(i), this % Q(i,:), &
+                  & this % QDOT(i,:), this % QDDOT(i,:))
+          end do
 
        else 
 
@@ -764,8 +761,27 @@ contains
     else
 
        if (this % second_order) then
+         
+          ! get the q block
+          call DRDQ(this % J(i,j,:,:), this % nvars, this % T(j), &
+               & this % Q(j,:), this % QDOT(j,:), this % QDDOT(j,:))
 
-          stop"fix the jacobian calls for second order"
+          ! multiply with coeffs
+          this % J(i,j,:,:) = this % h * this % A(i,i) &
+               & * this % h * this % A(i,i) * this % J(i,j,:,:) 
+          
+          ! get the qdot block
+          call DRDQDOT(this % J(i,j,:,:), this % nvars, this % T(j), &
+               & this % Q(j,:), this % QDOT(j,:), this % QDDOT(j,:))
+          
+          ! multiply with coeffs
+          this % J(i,j,:,:) = this % h * this % A(i,i) &
+               &* this % J(i,j,:,:)
+
+          ! get the qddot block
+          call DRDQDDOT(this % J(i,j,:,:), this % nvars, this % T(j), &
+               & this % Q(j,:), this % QDOT(j,:), this % QDDOT(j,:))
+          
           
        else
           
