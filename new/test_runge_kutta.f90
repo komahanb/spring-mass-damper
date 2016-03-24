@@ -12,7 +12,7 @@ program main
   integer :: i, kk
 
   integer, parameter :: M = 1
-  real(8), parameter :: h =  0.05d0
+  real(8), parameter :: h =  0.1d0
   real(8), parameter :: tinit = 0.0d0
   real(8), parameter :: tfinal = 1.0d0
 

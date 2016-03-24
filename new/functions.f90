@@ -156,7 +156,9 @@ subroutine R(res, nvars, time, q, qdot, qddot)
 
   if (nvars .eq. 1) then
 
-     res(1) = qdot(1) - sin(q(1))
+     ! res(1) = qdot(1) - sin(q(1))
+     
+     res(1) = qddot(1) + 4.0d0*qdot(1) + 3.0d0*q(1)
 
   else if (nvars .eq. 2) then 
 

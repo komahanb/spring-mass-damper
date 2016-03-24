@@ -1015,7 +1015,7 @@ contains
              qdottmp(k) = this % QDOT(i,k) + small
 
              call R(tmp1, this % nvars, this % T(i), this % Q(i,:), &
-                  & qdottmp)
+                  & qdottmp, this % QDDOT(i,:))
 
              ! unperturb the k-th variable
              qdottmp(k) = this % QDOT(i,k)
@@ -1112,7 +1112,7 @@ contains
             & maxval(abs(exact_jac - jtmp))
     end if
 
-!!$ exact_jac = jtmp
+    !!$exact_jac = jtmp
 
     deallocate(qtmp,qdottmp)
     deallocate(tmp1,tmp2)
