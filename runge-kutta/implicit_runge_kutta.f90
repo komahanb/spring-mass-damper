@@ -1105,7 +1105,7 @@ contains
             & maxval(abs(exact_jac - jtmp))
     end if
 
-    !!$exact_jac = jtmp
+!!$    exact_jac = jtmp
 
     deallocate(qtmp,qdottmp)
     deallocate(tmp1,tmp2)

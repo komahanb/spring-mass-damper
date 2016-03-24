@@ -162,9 +162,8 @@ subroutine R(res, nvars, time, q, qdot, qddot)
 
   else if (nvars .eq. 2) then 
 
-     
-     res(1) = qddot(1) + 0.02d0*qdot(1) + 5.0d0*q(1)
-     res(2) = qddot(2) + 0.02d0*qdot(2) + 5.0d0*q(2)
+     res(1) = qddot(1) + 0.02d0*qdot(1)*qdot(2) + 5.0d0*q(1)
+     res(2) = qddot(2) - 0.05d0*qdot(2)*qdot(1) + 1.0d0*q(2)*q(1)
 
 !!$     res(1) = qdot(1) - q(2)
 !!$     res(2) = qdot(2) + 0.5d0*q(1) - 2.5d0*q(2)
@@ -205,9 +204,15 @@ subroutine DRDQ(J, alpha, nvars, time, q, qdot, qddot)
 
      !res(1) = qdot(1) - q(2)
      !res(2) = qdot(2) + 0.5d0*q(1) - 2.5d0*q(2)
-
+     
 !!$     res(1) = qddot(1) + 0.02d0*qdot(1) + 5.0d0*q(1)
 !!$     res(2) = qddot(2) + 0.02d0*qdot(2) + 5.0d0*q(2)
+     
+!!$     res(1) = qddot(1)*qddot(1) + 0.02d0*qdot(1)*qdot(2) + 5.0d0*q(1)
+!!$     res(2) = qddot(2) + 0.02d0*qdot(2) + 5.0d0*q(2)*q(1)
+
+!!$     res(1) = qddot(1) + 0.02d0*qdot(1)*qdot(2) + 5.0d0*q(1)
+!!$     res(2) = qddot(2) - 0.05d0*qdot(2)*qdot(1) + 1.0d0*q(2)*q(1)
      
      ! derivative of first equation
 
@@ -216,8 +221,8 @@ subroutine DRDQ(J, alpha, nvars, time, q, qdot, qddot)
 
      ! derivative of second equation
 
-     J(2,1) = J(2,1) + alpha*0.0d0
-     J(2,2) = J(2,2) + alpha*5.0d0
+     J(2,1) = J(2,1) + alpha*1.0d0*q(2)
+     J(2,2) = J(2,2) + alpha*1.0d0*q(1)
 
   else if (nvars .eq. 3) then
 
@@ -278,16 +283,22 @@ subroutine DRDQDOT(J, alpha, nvars, time, q, qdot, qddot)
 
 !!$     res(1) = qddot(1) + 0.02d0*qdot(1) + 5.0d0*q(1)
 !!$     res(2) = qddot(2) + 0.02d0*qdot(2) + 5.0d0*q(2)
+     
+!!$     res(1) = qddot(1)*qddot(1) + 0.02d0*qdot(1)*qdot(2) + 5.0d0*q(1)
+!!$     res(2) = qddot(2) + 0.02d0*qdot(2) + 5.0d0*q(2)*q(1)
 
+!!$     res(1) = qddot(1) + 0.02d0*qdot(1)*qdot(2) + 5.0d0*q(1)
+!!$     res(2) = qddot(2) - 0.05d0*qdot(2)*qdot(1) + 1.0d0*q(2)*q(1)
+     
      ! derivative of first equation
 
-     J(1,1) = J(1,1) + alpha*0.02d0
-     J(1,2) = J(1,2) + alpha*0.00d0
+     J(1,1) = J(1,1) + alpha*0.02d0*qdot(2)
+     J(1,2) = J(1,2) + alpha*0.02d0*qdot(1)
 
      ! derivative of second equation
      
-     J(2,1) = J(2,1) + alpha*0.00d0
-     J(2,2) = J(2,2) + alpha*0.02d0
+     J(2,1) = J(2,1) - alpha*0.05d0*qdot(2)
+     J(2,2) = J(2,2) - alpha*0.05d0*qdot(1)
      
   else if (nvars .eq. 3) then
 
@@ -341,6 +352,12 @@ subroutine DRDQDDOT(J, alpha, nvars, time, q, qdot, qddot)
 !!$     res(1) = qddot(1) + 0.02d0*qdot(1) + 5.0d0*q(1)
 !!$     res(2) = qddot(2) + 0.02d0*qdot(2) + 5.0d0*q(2)
      
+!!$     res(1) = qddot(1)*qddot(1) + 0.02d0*qdot(1)*qdot(2) + 5.0d0*q(1)
+!!$     res(2) = qddot(2) + 0.02d0*qdot(2) + 5.0d0*q(2)*q(1)
+
+!!$     res(1) = qddot(1) + 0.02d0*qdot(1)*qdot(2) + 5.0d0*q(1)
+!!$     res(2) = qddot(2) - 0.05d0*qdot(2)*qdot(1) + 1.0d0*q(2)*q(1)
+
      ! derivative of first equation
      
      J(1,1) = J(1,1) + alpha*1.0d0

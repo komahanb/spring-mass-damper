@@ -11,10 +11,10 @@ program main
 
   integer :: i, kk
 
-  integer, parameter :: M = 1
+  integer, parameter :: M = 2
   real(8), parameter :: h =  0.1d0
   real(8), parameter :: tinit = 0.0d0
-  real(8), parameter :: tfinal = 10.0d0
+  real(8), parameter :: tfinal = 25.0d0
 
   real(8), allocatable, dimension(:,:,:) :: q, qdot, qddot
 
@@ -193,8 +193,8 @@ program main
 
      ! Find the error
      do i = 1, N + 1
-        write(90, *)  tinit + dble(i-1)*h, (q(kk,i,j),j=1,M), &
-             & exact_solution(dble(i-1)*h,1.0d0,0.0d0)
+        write(90, *)  tinit + dble(i-1)*h, (q(kk,i,j),j=1,M)!, &
+!             & exact_solution(dble(i-1)*h,1.0d0,0.0d0)
      end do
 
      close(90)
