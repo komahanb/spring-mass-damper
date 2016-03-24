@@ -158,7 +158,7 @@ subroutine R(res, nvars, time, q, qdot, qddot)
 
      ! res(1) = qdot(1) - sin(q(1))
      
-     res(1) = qddot(1) + 4.0d0*qdot(1) + 3.0d0*q(1)
+     res(1) = qddot(1) + 0.02d0*qdot(1) + 5.0d0*q(1)
 
   else if (nvars .eq. 2) then 
 
@@ -195,7 +195,7 @@ subroutine DRDQ(J, alpha, nvars, time, q, qdot, qddot)
 
 !!$     J(1,1) = J(1,1) - cos(q(1))
      
-     J(1,1) = J(1,1) + alpha*3.0d0
+     J(1,1) = J(1,1) + alpha*5.0d0
 
   else if (nvars .eq. 2) then
 
@@ -262,7 +262,7 @@ subroutine DRDQDOT(J, alpha, nvars, time, q, qdot, qddot)
 
      ! res(1) = qdot(1) - sin(q(1))
 
-     J(1,1) = J(1,1) + alpha*4.0d0
+     J(1,1) = J(1,1) + alpha*0.02d0
      
   else if (nvars .eq. 2) then
 

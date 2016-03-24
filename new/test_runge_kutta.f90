@@ -14,7 +14,7 @@ program main
   integer, parameter :: M = 1
   real(8), parameter :: h =  0.1d0
   real(8), parameter :: tinit = 0.0d0
-  real(8), parameter :: tfinal = 1.0d0
+  real(8), parameter :: tfinal = 10.0d0
 
   real(8), allocatable, dimension(:,:,:) :: q, qdot, qddot
 
