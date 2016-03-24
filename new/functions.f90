@@ -144,13 +144,14 @@ end subroutine DFDQDOT
 ! Function in Implicit form R(t, q, qot) = 0 
 !-------------------------------------------------------------------!
 
-subroutine R(res, nvars, time, q, qdot)
+subroutine R(res, nvars, time, q, qdot, qddot)
 
   implicit none
 
   integer, intent(in) :: nvars
   real(8), intent(in) :: time
   real(8), intent(in) :: q(nvars), qdot(nvars)
+  real(8), OPTIONAL, intent(in) :: qddot(nvars)
   real(8), intent(inout) :: res(nvars)
 
   if (nvars .eq. 1) then
@@ -176,13 +177,14 @@ end subroutine R
 ! DRDQ of the function
 !---------------------------------------------------------------------!
 
-subroutine DRDQ(J, nvars, time, q, qdot)
+subroutine DRDQ(J, nvars, time, q, qdot, qddot)
 
   implicit none
 
   integer, intent(in) :: nvars  
   real(8), intent(in) :: time
   real(8), intent(in) :: q(nvars), qdot(nvars)
+  real(8), OPTIONAL, intent(in) :: qddot(nvars)
   real(8), intent(inout) :: J(nvars,nvars)  
   
   if (nvars .eq. 1) then
@@ -242,13 +244,14 @@ end subroutine DRDQ
 ! DRDQDOT of the function
 !---------------------------------------------------------------------!
 
-subroutine DRDQDOT(J, nvars, time, q, qdot)
+subroutine DRDQDOT(J, nvars, time, q, qdot, qddot)
 
   implicit none
 
   integer, intent(in) :: nvars  
   real(8), intent(in) :: time
   real(8), intent(in) :: q(nvars), qdot(nvars)
+  real(8), OPTIONAL, intent(in) :: qddot(nvars)
   real(8), intent(inout) :: J(nvars,nvars)  
 
   if (nvars .eq. 1) then
@@ -295,6 +298,65 @@ subroutine DRDQDOT(J, nvars, time, q, qdot)
   end if
 
 end subroutine DRDQDOT
+
+!---------------------------------------------------------------------!
+! DRDQDDOT of the function
+!---------------------------------------------------------------------!
+
+subroutine DRDQDDOT(J, nvars, time, q, qdot, qddot)
+
+  implicit none
+
+  integer, intent(in) :: nvars  
+  real(8), intent(in) :: time
+  real(8), intent(in) :: q(nvars), qdot(nvars)
+  real(8), OPTIONAL, intent(in) :: qddot(nvars)
+  real(8), intent(inout) :: J(nvars,nvars)  
+
+  if (nvars .eq. 1) then
+
+     ! res(1) = qdot(1) - sin(q(1))
+
+     J(1,1) = J(1,1) + 1.0d0
+     
+  else if (nvars .eq. 2) then
+
+     !res(1) = qdot(1) - q(2)
+     !res(2) = qdot(2) + 0.5d0*q(1) - 2.5d0*q(2)
+
+     ! derivative of first equation
+
+     J(1,1) = J(1,1) + 1.0d0
+     J(1,2) = J(1,2) + 0.0d0
+
+     ! derivative of second equation
+     
+     J(2,1) = J(2,1) + 0.0d0
+     J(2,2) = J(2,2) + 1.0d0
+     
+  else if (nvars .eq. 3) then
+
+     ! derivative of first equation
+
+     J(1,1) = J(1,1) + 1.0d0
+     J(1,2) = J(1,2) + 0.0d0
+     J(1,3) = J(1,3) + 0.0d0
+
+     ! derivative of second equation
+
+     J(2,1) = J(2,1) + 0.0d0
+     J(2,2) = J(2,2) + 1.0d0
+     J(2,3) = J(2,3) + 0.0d0
+
+     ! derivative of third equation
+
+     J(3,1) = J(3,1) + 0.0d0
+     J(3,2) = J(3,2) + 0.0d0
+     J(3,3) = J(3,3) + 1.0d0
+
+  end if
+
+end subroutine DRDQDDOT
 
 
 

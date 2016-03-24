@@ -740,7 +740,7 @@ contains
     class(DIRK) :: this
     integer :: i, j
     external :: DFDQ, DFDQDOT
-    external :: DRDQ, DRDQDOT
+    external :: DRDQ, DRDQDOT, DRDQDDOT
 
     ! get the appropriate indices based on type and stage number
     call this % find_indices(j, i)
