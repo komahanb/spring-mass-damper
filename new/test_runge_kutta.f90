@@ -159,8 +159,14 @@ program main
 
   else if (M .eq. 2) then
      
-     q(:,1,1) = 0.0d0
-     q(:,1,2) = 1.0d0
+     q(:,1,1) = 1.0d0
+     q(:,1,2) = 2.0d0
+
+     qdot(:,1,1) = 0.0d0
+     qdot(:,1,2) = 0.0d0
+
+!!$     q(:,1,1) = 0.0d0
+!!$     q(:,1,2) = 1.0d0
 
   else if (M .eq. 3) then
 
@@ -187,7 +193,8 @@ program main
 
      ! Find the error
      do i = 1, N + 1
-        write(90, *)  tinit + dble(i-1)*h, (q(kk,i,j),j=1,M)
+        write(90, *)  tinit + dble(i-1)*h, (q(kk,i,j),j=1,M), &
+             & exact_solution(dble(i-1)*h,1.0d0,0.0d0)
      end do
 
      close(90)
@@ -209,6 +216,27 @@ contains
     ! exact = 2.0d0*exp(1.0d0-t*t) 
     
   end function exact
+
+  !===================================================================!
+  ! Exact solution to the spring mass damper system
+  !===================================================================!
+
+  function exact_solution(t, x0, v0) result (x)
+
+    real(8) :: t, x, x0, v0
+    complex(8) :: mul, a, b, term1, term2, term3
+
+    a = 0.020d0
+    b = 5.00d0
+
+    mul = exp(-a*t*0.50d0)/sqrt(a*a - 4.00d0*b)
+    term1 = a*sinh(0.50d0*t*sqrt(a*a - 4.00d0*b))
+    term2 = sqrt(a*a - 4.00d0*b)*cosh(0.50d0*t*sqrt(a*a - 4.00d0*b))
+    term3 = 2.00d0*v0*sinh(0.50d0*t*sqrt(a*a - 4.00d0*b))
+
+    x = real(mul*((term1 + term2)*x0 + term3))
+
+  end function exact_solution
 
 end program main
 
