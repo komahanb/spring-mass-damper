@@ -736,6 +736,7 @@ contains
 
     class(DIRK) :: this
     integer :: i, j
+    real(8) :: alpha
     external :: DFDQ, DFDQDOT
     external :: DRDQ, DRDQDOT, DRDQDDOT
 
@@ -763,38 +764,30 @@ contains
        if (this % second_order) then
          
           ! get the q block
-          call DRDQ(this % J(i,j,:,:), this % nvars, this % T(j), &
+          alpha =  this % h * this % A(i,i)* this % h * this % A(i,i)
+          call DRDQ(this % J(i,j,:,:), alpha, this % nvars, this % T(j), &
                & this % Q(j,:), this % QDOT(j,:), this % QDDOT(j,:))
-
-          ! multiply with coeffs
-          this % J(i,j,:,:) = this % h * this % A(i,i) &
-               & * this % h * this % A(i,i) * this % J(i,j,:,:) 
           
           ! get the qdot block
-          call DRDQDOT(this % J(i,j,:,:), this % nvars, this % T(j), &
+          alpha =  this % h * this % A(i,i)
+          call DRDQDOT(this % J(i,j,:,:), alpha, this % nvars, this % T(j), &
                & this % Q(j,:), this % QDOT(j,:), this % QDDOT(j,:))
           
-          ! multiply with coeffs
-          this % J(i,j,:,:) = this % h * this % A(i,i) &
-               &* this % J(i,j,:,:)
-
           ! get the qddot block
-          call DRDQDDOT(this % J(i,j,:,:), this % nvars, this % T(j), &
+          alpha = 1.0d0
+          call DRDQDDOT(this % J(i,j,:,:), alpha, this % nvars, this % T(j), &
                & this % Q(j,:), this % QDOT(j,:), this % QDDOT(j,:))
-          
           
        else
           
           ! get the q block
-          call DRDQ(this % J(i,j,:,:), this % nvars, this % T(j), &
+          alpha = this % h * this % A(i,i)
+          call DRDQ(this % J(i,j,:,:), alpha, this % nvars, this % T(j), &
                & this % Q(j,:), this % QDOT(j,:))
 
-          ! multiply with coeffs
-          this % J(i,j,:,:) = this % h * this % A(i,i) &
-               &* this % J(i,j,:,:)
-
           ! get the qdot block
-          call DRDQDOT(this % J(i,j,:,:), this % nvars, this % T(j), &
+          alpha = 1.0d0
+          call DRDQDOT(this % J(i,j,:,:), alpha, this % nvars, this % T(j), &
                & this % Q(j,:), this % QDOT(j,:))
 
        end if
@@ -1023,7 +1016,7 @@ contains
              jtmp2(:,k) = (tmp1-tmp2)/small
 
           end do
-
+          
           jtmp2 =  this % h * this % A(i,i) * jtmp2
 
           !-----------------------------------------------------------!
@@ -1046,7 +1039,7 @@ contains
              jtmp3(:,k) = (tmp1-tmp2)/small
 
           end do
-
+          
           jtmp = jtmp3 + jtmp2 + jtmp1 
 
        else
@@ -1121,12 +1114,3 @@ contains
   end subroutine check_jacobian
 
 end module implicit_runge_kutta
-
-
-
-
-
-
-
-
-
