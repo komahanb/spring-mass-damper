@@ -350,6 +350,7 @@ contains
     class(RK) :: this
 
     ! reset the variables that are computed during each time step    
+    this % QDDOT = 0.0d0
     this % QDOT = 0.0d0
     this % Q = 0.0d0
     this % T = 0.0d0
