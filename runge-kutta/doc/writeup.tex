@@ -102,7 +102,7 @@ The Newton updates are carried out as shown below
     \mathbf{\dot{q}}_{k,i}^{n+1} & = \mathbf{\dot{q}}_{k,i}^{n} +
     \Delta\mathbf{\dot{q}}_{k,i}^{n} \\
     \mathbf{q}_{k,i}^{n+1} & = \mathbf{q}_{k,i}^n + h a_{ii}
-    \mathbf{\dot{q}}_{k,i}^n \\
+    \Delta\mathbf{\dot{q}}_{k,i}^n \\
   \end{split}
 \end{equation}
 where $n$ refers to the Newton iteration number.
@@ -205,9 +205,9 @@ The following are the update formulae for the solution of the non-linear problem
     \mathbf{\ddot{q}}_{k,i}^{n+1} & = \mathbf{\ddot{q}}_{k,i}^{n} +
     \Delta\mathbf{\ddot{q}}_{k,i}^{n} \\
     \mathbf{\dot{q}}_{k,i}^{n+1} & = \mathbf{\dot{q}}_{k,i}^n + h a_{ii}
-    \mathbf{\ddot{q}}_{k,i}^n \\
+    \Delta\mathbf{\ddot{q}}_{k,i}^n \\
     \mathbf{{q}}_{k,i}^{n+1} & = \mathbf{{q}}_{k,i}^n + h^2 a_{ii}^2
-    \mathbf{\ddot{q}}_{k,i}^n \\
+    \Delta\mathbf{\ddot{q}}_{k,i}^n \\
   \end{split}
 \end{equation}
 where $n$ refers to the Newton iteration number.

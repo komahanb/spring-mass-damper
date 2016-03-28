@@ -584,12 +584,12 @@ contains
           
           ! update qdot
           this % QDOT(i,:) = this % QDOT(i,:) &
-               & + this % h * this % A(i,i) * this % QDDOT(i,:)
+               & + this % h * this % A(i,i) * sol(:)
 
           ! update q
           this % Q(i,:) = this % Q(i,:) &
                & + this % h * this % A(i,i) * this % h * this % A(i,i) &
-               & * this % QDDOT(i,:)
+               & * sol(:)
 
        else
           
@@ -598,7 +598,7 @@ contains
           
           ! update q for i-th stage
           this % Q(i,:) = this % Q(i,:) &
-               & + this % h * this % A(i,i)* this % QDOT(i,:)
+               & + this % h * this % A(i,i)*sol(:)
           
        end if
        
