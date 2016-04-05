@@ -220,7 +220,7 @@ where $n$ refers to the Newton iteration number.
 We march in time using the following relation
 \begin{equation}
   \begin{split}
-  \mathbf{q}_{k+1} = \mathbf{q}_{k} +h^2 \sum_{j=1}^s b_j \mathbf{\ddot{q}}_{k,j} \\
+  \mathbf{q}_{k+1} = \mathbf{q}_{k} +h \sum_{j=1}^s b_j \mathbf{\dot{q}}_{k,j} \\
   \mathbf{\dot{q}}_{k+1} = \mathbf{\dot{q}}_{k} +h \sum_{j=1}^s b_j \mathbf{\ddot{q}}_{k,j} \\
   \end{split}
 \end{equation}
@@ -228,6 +228,10 @@ The acceleration states can be found directly using the quadrature rule
 \begin{equation}
   \mathbf{\ddot{q}}_{k+1} = \mathbf{\ddot{q}}_{k} + \sum_{j=1}^s b_j \mathbf{\ddot{q}}_{k,j}
 \end{equation}
+
+\end{multicols}
+\end{document}
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -272,9 +276,6 @@ In descriptor form
 \paragraph{Comparison of Solutions}
 
 \paragraph{Comparison of Order of Accuracy}
-
-\end{multicols}
-\end{document}
 
 \paragraph{Residual of Stage Equations:}
 
