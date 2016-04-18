@@ -230,6 +230,58 @@ The acceleration states can be found directly using the quadrature rule
 \end{equation}
 
 \end{multicols}
+
+\section{Adjoint Formulation}
+
+In this section, we discuss the derivation of the adjoint using our
+DIRK scheme. 
+
+\subsection{Lagrangian Function}
+
+\subsubsection{DIRK Adjoint Scheme}
+
+\paragraph{Note:}
+
+The Lagrange multipliers at a given time-step $\mathbf{\lambda}_k$ are
+not dependent on future states, but rather on the stage state
+values. So it is not necessary to store the time history of the entire
+simulation. Storing the solution history for $s$-stages would suffice!
+
+\subsubsection{Backward Difference Scheme}
+The Lagrangian, $\mathcal{L}$, is defined as follows:
+\begin{equation}
+  \label{eqn:adjoint-lagrangian}
+  \mathcal{L} = f(\mathbf{x}, \mathbf{q}_{0}, \ldots, \mathbf{q}_{N}) + 
+  \sum_{k=0}^{N} \mathbf{\lambda}_{k}^{T}\mathbf{R}_{k}(\ddot{\mathbf{q}}_{k}, \dot{\mathbf{q}}_{k}, \mathbf{q}_{k}),
+\end{equation}
+where $f$ is the function of interest, $\mathbf{\lambda}_{k}$ are the
+Lagrange multipliers at each time step $k$ and $\mathbf{R}_{k}$ are the
+residuals evaluated at the $k$-th time step.
+%
+To determine the values of the Lagrange multipliers,
+$\mathbf{\lambda}_{k}$, we evaluate the partial derivative of Lagrangian
+with respect to the state variables at the $k$-th time step:
+%
+\begin{equation*}
+  % \label{eqn:langrange-derivative-k}
+  \nabla_{\mathbf{q}_{k}} \mathcal{L} = \pd{f}{\mathbf{q}_{k}} + 
+  \mathbf{\lambda}_{k}^{T} \frac{\mathbf{R}_{k}}{\mathbf{q}} + 
+  \sum_{i=0}^{m} \mathbf{\lambda}_{k+i}^{T} \frac{\alpha_{i}}{\Delta t} \frac{\mathbf{R}_{k+i}}{\dot{\mathbf{q}}} + 
+  \sum_{i=0}^{2m} \mathbf{\lambda}_{k+i}^{T} \frac{\beta_{i}}{\Delta t} \frac{\mathbf{R}_{k+i}}{\ddot{\mathbf{q}}}.
+\end{equation*}
+Rearranging terms and taking the transpose of the above expression
+results in the following equation for the Langrange multipliers at the
+$k$-th time step:
+\begin{equation}
+  \label{eqn:adjoint-time-step-k}
+  \left[ \pd{\mathbf{R}_{k}}{\mathbf{q}_{k}} + 
+    \frac{\alpha_{0}}{\Delta t} \frac{\mathbf{R}_{k}}{\dot{\mathbf{q}}} + 
+    \frac{\beta_{0}}{\Delta t} \frac{\mathbf{R}_{k}}{\ddot{\mathbf{q}}} \right]^{T} \mathbf{\lambda}_{k} =  
+  - \pd{f}{\mathbf{q}_{k}}^{T} - 
+  \sum_{i=1}^{m} \frac{\alpha_{i}}{\Delta t} \frac{\mathbf{R}_{k+i}}{\dot{\mathbf{q}}}^{T} \mathbf{\lambda}_{k+i} - 
+  \sum_{i=1}^{2m} \frac{\beta_{i}}{\Delta t} \frac{\mathbf{R}_{k+i}}{\ddot{\mathbf{q}}}^{T} \mathbf{\lambda}_{k+i}
+\end{equation}
+
 \end{document}
 
 
